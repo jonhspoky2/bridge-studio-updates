@@ -22,7 +22,7 @@ for(const [cols,rows,segments] of [[2,2,16],[4,4,32]]){
  for(let i=0;i<30;i++){
   const x=-segments*.45+Math.floor(i/3)*2.25,z=-segments*.35+Math.sin(i*.7)*3;
   const begin=performance.now(),r=s.dab(stroke,x,z,.022);coreTimes.push(performance.now()-begin);
-  const render=performance.now();s.refreshMeshes(T,t,meshes,r.chunks,stroke.nodes);gpuTimes.push(performance.now()-render);
+  const render=performance.now();s.refreshMeshes(T,t,meshes,r.chunks,stroke.nodes,true);gpuTimes.push(performance.now()-render);
  }
  core.validate(t);const cmd=s.commit(stroke),bytes=JSON.stringify(cmd).length;
  function summary(arr){arr.sort((a,b)=>a-b);return {p50_ms:+sample(arr,.5).toFixed(3),p95_ms:+sample(arr,.95).toFixed(3),max_ms:+arr.at(-1).toFixed(3)};}
