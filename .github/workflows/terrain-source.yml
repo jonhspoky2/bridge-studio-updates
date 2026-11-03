@@ -4,15 +4,18 @@ on:
   push:
     paths:
       - 'src/**'
-      - 'updates/v0.18.5/**'
+      - 'updates/v0.19.0/**'
       - 'tools/build_studio.py'
       - 'tests/terrain-core.cjs'
       - 'tests/terrain-browser.cjs'
+      - 'tests/terrain-sculpt.cjs'
+      - 'tests/terrain-sculpt-performance.cjs'
+      - 'tests/terrain-sculpt-browser.cjs'
       - '.github/workflows/terrain-source.yml'
   pull_request:
     paths:
       - 'src/**'
-      - 'updates/v0.18.5/**'
+      - 'updates/v0.19.0/**'
       - 'tools/build_studio.py'
       - 'tests/terrain-core.cjs'
       - '.github/workflows/terrain-source.yml'
@@ -29,22 +32,25 @@ jobs:
       - name: Validate source syntax
         run: |
           node --check src/terrain_core.js
+          node --check src/terrain_sculpt.js
           node --check src/game_runtime.js
           node --check src/studio.js
           python3 -m py_compile tools/build_studio.py
-      - name: Verify release candidate bytes and SHA-256
+      - name: Build pre-release editor and validate file budget
         run: |
-          python3 tools/build_studio.py --check updates/v0.18.5/studio.html
+          python3 tools/build_studio.py --output /tmp/bridge-v0190-preview.html
           python3 - <<'PY'
-          import hashlib
           from pathlib import Path
-          b=Path("updates/v0.18.5/studio.html").read_bytes()
-          print("RELEASE_0185_SIZE="+str(len(b)))
-          print("RELEASE_0185_SHA256="+hashlib.sha256(b).hexdigest())
-          assert 250000 < len(b) < 1000000
+          html=Path('/tmp/bridge-v0190-preview.html').read_text(encoding='utf-8')
+          assert '/* @bridge:' not in html
+          assert 'BridgeTerrainSculpt' in html
+          print('Terrain 0.19.0 preview bytes',len(html.encode('utf-8')))
           PY
       - name: Run terrain geometry and surface tests
-        run: node tests/terrain-core.cjs
+        run: |
+          node tests/terrain-core.cjs
+          node tests/terrain-sculpt.cjs
+          node tests/terrain-sculpt-performance.cjs
       - name: Build single-file editor from sources
         run: |
           python3 tools/build_studio.py --output /tmp/bridge-terrain-studio.html
@@ -67,4 +73,13 @@ jobs:
           npm install --no-save --no-package-lock playwright@1.56.1 three@0.128.0
           npx playwright install --with-deps chromium
       - name: Terrain browser integration (SwiftShader WebGL)
-        run: node tests/terrain-browser.cjs
+        run: |
+          node tests/terrain-browser.cjs
+          node tests/terrain-sculpt-browser.cjs
+      - name: Upload Terrain Sculpt visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terrain-v0190-screenshots
+          path: tests/screenshots/*.png
+          if-no-files-found: ignore

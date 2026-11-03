@@ -43,7 +43,7 @@ function createMeshes(T,t){
  if(!t)return [];
  validate(t);
  return t.chunks.map(function(c,n){
-  var side=c.segments+1,positions=[],normals=[],indices=[],eps=c.step*.25;
+  var side=c.segments+1,positions=[],normals=[],indices=[],eps=c.step;
   for(var j=0;j<side;j++)for(var i=0;i<side;i++){
    var x=c.x+i*c.step,z=c.z+j*c.step,h=c.heights[j*side+i];
    positions.push(x,h,z);
@@ -58,8 +58,8 @@ function createMeshes(T,t){
   var g=new T.BufferGeometry();
   g.setAttribute('position',new T.Float32BufferAttribute(positions,3));
   g.setAttribute('normal',new T.Float32BufferAttribute(normals,3));g.setIndex(indices);
-  var mesh=new T.Mesh(g,new T.MeshStandardMaterial({color:0x709b67,roughness:.96,metalness:0,side:T.FrontSide}));
-  mesh.name='Terrain '+(n+1);mesh.receiveShadow=true;mesh.castShadow=false;return mesh;
+  var mesh=new T.Mesh(g,new T.MeshStandardMaterial({color:0x21472f,roughness:.96,metalness:0,side:T.FrontSide}));
+  mesh.name='Terrain '+(n+1);mesh.receiveShadow=true;mesh.castShadow=true;return mesh;
  });
 }
 function demoSlope(){
