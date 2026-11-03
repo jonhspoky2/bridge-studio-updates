@@ -89,7 +89,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install browser testing dependencies
         run: |
-          npm install --no-save --no-package-lock playwright@1.56.1 three@0.128.0
+          npm install --no-save --no-package-lock playwright@1.56.1 three@0.128.0 pngjs@7.0.0
           npx playwright install --with-deps chromium
       - name: Terrain browser integration (SwiftShader WebGL)
         run: |
