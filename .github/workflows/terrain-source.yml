@@ -46,6 +46,17 @@ jobs:
           assert 'BridgeTerrainSculpt' in html
           print('Terrain 0.19.0 preview bytes',len(html.encode('utf-8')))
           PY
+      - name: Verify v0.19.0 release candidate reproducibility
+        run: |
+          python3 tools/build_studio.py --check updates/v0.19.0/studio.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          data=Path('updates/v0.19.0/studio.html').read_bytes()
+          assert 250000 < len(data) < 1000000
+          print('BRIDGE_V0190_SIZE='+str(len(data)))
+          print('BRIDGE_V0190_SHA256='+hashlib.sha256(data).hexdigest())
+          PY
       - name: Run terrain geometry and surface tests
         run: |
           node tests/terrain-core.cjs
