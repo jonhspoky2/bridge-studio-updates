@@ -58,6 +58,19 @@ const {chromium}=require('playwright');
   assert.deepEqual(undo.terrain,flat.terrain,'single Undo reverts drag');
   await page.click('#redoBtn');
   assert.deepEqual((await page.evaluate(()=>window.__bridgeQA().project)).terrain.chunks.map(c=>c.heights),afterHeights,'Redo restores drag');
+  // Interleaved editing: Terrain delta commands and classic JSON snapshots share one history.
+  await page.click('#addBlock');
+  const withBlock=await page.evaluate(()=>window.__bridgeQA().project);
+  assert.equal(withBlock.objects.length,raised.objects.length+1);
+  await page.click('#undoBtn');
+  assert.deepEqual((await page.evaluate(()=>window.__bridgeQA().project)).objects,raised.objects,'Undo removes ordinary object');
+  await page.click('#undoBtn');
+  assert.deepEqual((await page.evaluate(()=>window.__bridgeQA().project)).terrain,flat.terrain,'Undo passes through terrain command');
+  await page.click('#redoBtn');
+  assert.deepEqual((await page.evaluate(()=>window.__bridgeQA().project)).terrain.chunks.map(c=>c.heights),afterHeights,'mixed Redo restores terrain');
+  await page.click('#redoBtn');
+  assert.deepEqual((await page.evaluate(()=>window.__bridgeQA().project)).objects,withBlock.objects,'mixed Redo restores ordinary object');
+
   // Cancel pending brush with Escape must revert without altering completed stroke history.
   await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+25,y+10,{steps:4});
   await page.keyboard.press('Escape');await page.mouse.up();
