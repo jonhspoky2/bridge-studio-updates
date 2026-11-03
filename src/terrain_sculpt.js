@@ -152,20 +152,22 @@ function dirtyWithNeighbors(terrain,indices){
  });
  return Array.from(dirty);
 }
-function refreshMeshes(T,terrain,meshes,changed){
+function refreshMeshes(T,terrain,meshes,changed,topology){
  if(!changed||!changed.length)return [];
  var affected=dirtyWithNeighbors(terrain,changed),step=terrain.chunks[0].step;
+ var nodes=topology||indexNodes(terrain);
+ function at(x,z){var n=nodes.get(key(x,z));return n?terrain.chunks[n.refs[0].chunk].heights[n.refs[0].index]:null;}
  affected.forEach(function(ci){
   var c=terrain.chunks[ci],mesh=meshes[ci];
   if(!mesh||!mesh.geometry)return;
   var geometry=mesh.geometry,positions=geometry.getAttribute('position'),normals=geometry.getAttribute('normal');
   if(!positions||!normals)throw Error('Terrain: missing geometry attributes');
-  var count=c.segments+1,epsilon=step*.25;
+  var count=c.segments+1,epsilon=step;
   for(var z=0;z<count;z++)for(var x=0;x<count;x++){
    var i=z*count+x,wx=c.x+x*c.step,wz=c.z+z*c.step,h=c.heights[i];
    positions.array[i*3+1]=h;
-   var left=CORE.sampleHeight(terrain,wx-epsilon,wz),right=CORE.sampleHeight(terrain,wx+epsilon,wz);
-   var back=CORE.sampleHeight(terrain,wx,wz-epsilon),front=CORE.sampleHeight(terrain,wx,wz+epsilon);
+   var left=at(wx-epsilon,wz),right=at(wx+epsilon,wz);
+   var back=at(wx,wz-epsilon),front=at(wx,wz+epsilon);
    var dx=((right===null?h:right)-(left===null?h:left))/((right!==null&&left!==null?2:1)*epsilon);
    var dz=((front===null?h:front)-(back===null?h:back))/((front!==null&&back!==null?2:1)*epsilon);
    var length=Math.hypot(dx,1,dz)||1;
