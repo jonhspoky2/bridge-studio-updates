@@ -1115,7 +1115,7 @@ function startTerrainStroke(e,point){
  try{
   var stroke=window.BridgeTerrainSculpt.begin(project.terrain,terrainOptions(),point.x,point.z);
   var result=window.BridgeTerrainSculpt.dab(stroke,point.x,point.z,.033);
-  terrainStroke={stroke:stroke,x:point.x,z:point.z,lastTime:e.timeStamp||performance.now(),pointerId:e.pointerId};
+  terrainStroke={stroke:stroke,x:point.x,z:point.z,lastTime:e.timeStamp||performance.now(),pointerId:e.pointerId,dirtyBefore:dirty};
   refreshTerrainChunks(result.chunks,true);if(result.vertices)setDirty(true);
   showTerrainCursor(point.x,point.z);
  }catch(error){status('Кисть: '+error.message,true);}
@@ -1132,9 +1132,9 @@ function moveTerrainStroke(e,point){
 }
 function endTerrainStroke(cancelled){
  if(!terrainStroke)return;
- var stroke=terrainStroke.stroke;terrainStroke=null;
+ var entry=terrainStroke,stroke=entry.stroke;terrainStroke=null;
  try{
-  if(cancelled){refreshTerrainChunks(window.BridgeTerrainSculpt.cancel(stroke));status('Мазок Terrain отменён.');}
+  if(cancelled){refreshTerrainChunks(window.BridgeTerrainSculpt.cancel(stroke));setDirty(entry.dirtyBefore);status('Мазок Terrain отменён.');}
   else{
    var cmd=window.BridgeTerrainSculpt.commit(stroke);
    if(cmd){undoStack.push(cmd);if(undoStack.length>60)undoStack.shift();redoStack.length=0;setDirty(true);status('Terrain: мазок завершён · '+cmd.changes.length+' вершин · Ctrl+Z для отмены.');}
