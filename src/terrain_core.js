@@ -58,7 +58,7 @@ function createMeshes(T,t){
   var g=new T.BufferGeometry();
   g.setAttribute('position',new T.Float32BufferAttribute(positions,3));
   g.setAttribute('normal',new T.Float32BufferAttribute(normals,3));g.setIndex(indices);
-  var mesh=new T.Mesh(g,new T.MeshStandardMaterial({color:0x709b67,roughness:.96,metalness:0,side:T.FrontSide}));
+  var mesh=new T.Mesh(g,new T.MeshStandardMaterial({color:0x426b4f,roughness:.96,metalness:0,side:T.FrontSide}));
   mesh.name='Terrain '+(n+1);mesh.receiveShadow=true;mesh.castShadow=false;return mesh;
  });
 }
