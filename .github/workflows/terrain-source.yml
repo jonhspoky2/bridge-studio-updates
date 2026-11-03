@@ -9,6 +9,7 @@ on:
       - 'tests/terrain-core.cjs'
       - 'tests/terrain-browser.cjs'
       - 'tests/terrain-sculpt.cjs'
+      - 'tests/terrain-sculpt-performance.cjs'
       - 'tests/terrain-sculpt-browser.cjs'
       - '.github/workflows/terrain-source.yml'
   pull_request:
@@ -49,6 +50,7 @@ jobs:
         run: |
           node tests/terrain-core.cjs
           node tests/terrain-sculpt.cjs
+          node tests/terrain-sculpt-performance.cjs
       - name: Build single-file editor from sources
         run: |
           python3 tools/build_studio.py --output /tmp/bridge-terrain-studio.html
