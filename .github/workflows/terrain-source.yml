@@ -4,10 +4,13 @@ on:
   push:
     paths:
       - 'src/**'
+      - 'updates/v0.19.2/**'
       - 'updates/v0.19.1/**'
+      - 'updates/v0.19.2/**'
       - 'tools/build_studio.py'
       - 'tests/terrain-core.cjs'
       - 'tests/terrain-walk.cjs'
+      - 'tests/terrain-paint.cjs'
       - 'tests/terrain-browser.cjs'
       - 'tests/terrain-sculpt.cjs'
       - 'tests/terrain-sculpt-performance.cjs'
@@ -46,6 +49,7 @@ jobs:
           html=Path('/tmp/bridge-v0190-preview.html').read_text(encoding='utf-8')
           assert '/* @bridge:' not in html
           assert 'BridgeTerrainSculpt' in html
+          assert 'BridgeTerrainPaint' in html
           print('Terrain 0.19.1 preview bytes',len(html.encode('utf-8')))
           PY
       - name: Verify v0.19.1 release candidate reproducibility
@@ -64,6 +68,7 @@ jobs:
           node tests/terrain-core.cjs
           node tests/terrain-walk.cjs
           node tests/terrain-sculpt.cjs
+          node tests/terrain-paint.cjs
           node tests/terrain-sculpt-performance.cjs
       - name: Build single-file editor from sources
         run: |
