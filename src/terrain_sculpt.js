@@ -98,6 +98,12 @@ function dab(stroke,x,z,dt){
    if(!stroke.before.has(id))stroke.before.set(id,{chunk:ref.chunk,index:ref.index,before:old});
    c.heights[ref.index]=change.value;dirty.add(ref.chunk);stroke.dirty.add(ref.chunk);
   });
+  // Only chunks with affected vertices or normals within one grid step.
+  var px=change.node.x,pz=change.node.z;
+  terrain.chunks.forEach(function(other,j){
+   var span=other.segments*other.step,pad=other.step+1e-6;
+   if(px>=other.x-pad&&px<=other.x+span+pad&&pz>=other.z-pad&&pz<=other.z+span+pad)dirty.add(j);
+  });
  });
  stroke.samples++;stroke.points+=targets.length;
  return {vertices:targets.length,chunks:Array.from(dirty)};
@@ -152,9 +158,9 @@ function dirtyWithNeighbors(terrain,indices){
  });
  return Array.from(dirty);
 }
-function refreshMeshes(T,terrain,meshes,changed,topology){
+function refreshMeshes(T,terrain,meshes,changed,topology,precise){
  if(!changed||!changed.length)return [];
- var affected=dirtyWithNeighbors(terrain,changed),step=terrain.chunks[0].step;
+ var affected=precise?Array.from(new Set(changed)):dirtyWithNeighbors(terrain,changed),step=terrain.chunks[0].step;
  var nodes=topology||indexNodes(terrain);
  function at(x,z){var n=nodes.get(key(x,z));return n?terrain.chunks[n.refs[0].chunk].heights[n.refs[0].index]:null;}
  affected.forEach(function(ci){
