@@ -51,6 +51,7 @@ const {chromium}=require('playwright');
   await frame.waitForFunction(()=>window.__bridgeDebugState&&window.__bridgeDebugState().grounded);
   const initial=await frame.evaluate(()=>window.__bridgeDebugState());
   assert.equal(initial.terrainChunks,2);
+  console.log('Terrain debug spawn:',JSON.stringify(initial));
   assert.ok(Math.abs(initial.position[1]-initial.terrainY)<.1,'starts on terrain');
   await frame.evaluate(()=>window.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyD',key:'d'})));
   await frame.waitForFunction(()=>window.__bridgeDebugState().position[0]>1,{timeout:15000});
