@@ -187,7 +187,7 @@ function startTerrainStroke(e,point){
 function moveTerrainStroke(e,point){
  if(!terrainStroke||!point)return;
  try{
-  var t=e.timeStamp||performance.now(),dt=Math.max(.005,Math.min(.08,(t-terrainStroke.lastTime)/1000||.016));
+  var t=e.timeStamp||performance.now(),dt=Math.max(0,Math.min(.08,(t-terrainStroke.lastTime)/1000||0));
   var result=window.BridgeTerrainSculpt.applyPath(terrainStroke.stroke,terrainStroke.x,terrainStroke.z,point.x,point.z,dt);
   terrainStroke.x=point.x;terrainStroke.z=point.z;terrainStroke.lastTime=t;
   refreshTerrainChunks(result.chunks,true);if(result.vertices)setDirty(true);
