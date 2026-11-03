@@ -1,0 +1,54 @@
+name: Validate Bridge Studio patch
+
+on:
+  push:
+    paths:
+      - 'updates/**'
+      - '.github/workflows/validate-patch.yml'
+  pull_request:
+    paths:
+      - 'updates/**'
+      - '.github/workflows/validate-patch.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check manifest and patch integrity
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import base64
+          import hashlib
+          import re
+          from pathlib import Path
+
+          manifest = Path("updates/manifest.txt")
+          lines = [line.strip() for line in manifest.read_text(encoding="utf-8-sig").splitlines() if line.strip()]
+          assert lines and lines[0] == "BRIDGE-UPDATES/1", "Invalid update manifest header"
+          fields = {}
+          for line in lines[1:]:
+              key, sep, value = line.partition("=")
+              assert sep and key and key not in fields, f"Malformed or duplicate manifest field: {line[:50]}"
+              fields[key] = value
+
+          version = fields["version"]
+          assert re.fullmatch(r"\d+\.\d+\.\d+", version), "Invalid semantic version"
+          size_text, separator, expected_hash = fields["studio.html"].partition(":")
+          assert separator and size_text.isdigit(), "Invalid asset metadata"
+          assert re.fullmatch(r"[a-fA-F0-9]{64}", expected_hash), "Invalid SHA-256"
+          asset = Path("updates") / ("v" + version) / "studio.html"
+          assert asset.is_file(), f"Missing patch: {asset}"
+          payload = asset.read_bytes()
+          assert len(payload) == int(size_text), f"Size mismatch: {asset}"
+          assert hashlib.sha256(payload).hexdigest().lower() == expected_hash.lower(), "SHA-256 mismatch"
+          assert len(base64.b64decode(fields["signature"], validate=True)) > 0, "Invalid signature encoding"
+          print(f"Patch {version} is complete; asset hash/size match.")
+          print("Note: cryptographic signature verification is performed by the Bridge Studio updater.")
+          PY
