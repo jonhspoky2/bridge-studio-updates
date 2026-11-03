@@ -43,9 +43,12 @@ const {chromium}=require('playwright');
   const bounds=await canvas.boundingBox();
   assert.ok(bounds&&bounds.width>300&&bounds.height>300);
   const x=bounds.x+bounds.width/2,y=bounds.y+bounds.height/2;
+  await page.locator('#terrainStrength').evaluate(el=>{el.value='12';el.dispatchEvent(new Event('input',{bubbles:true}));});
+  await page.locator('#terrainRadius').evaluate(el=>{el.value='5';el.dispatchEvent(new Event('input',{bubbles:true}));});
   await page.screenshot({path:path.join(shots,'terrain-before.png')});
   await page.mouse.move(x,y);await page.mouse.down();
-  await page.mouse.move(x+38,y,{steps:12});await page.mouse.up();
+  for(let i=0;i<13;i++){await page.waitForTimeout(36);await page.mouse.move(x+(i+1)*3,y+Math.sin(i*.3)*5);}
+  await page.mouse.up();
   const raised=await page.evaluate(()=>window.__bridgeQA().project);
   assert.ok(raised.terrain.chunks.some(c=>c.heights.some(h=>h>0)),'raise mouse drag must change height');
   const afterHeights=raised.terrain.chunks.map(c=>c.heights);
