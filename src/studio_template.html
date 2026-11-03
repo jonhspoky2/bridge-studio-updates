@@ -84,6 +84,11 @@
 .terrain-slider output {float:right;color:var(--accent)}
 .terrain-brush.selected {background:#216477;border-color:#58d9e2;color:#fff}
 #terrainBrushHint {min-height:24px}
+.terrain-material-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:10px 0}
+.terrain-material{display:flex;gap:9px;align-items:center;padding:9px;border-radius:9px;border:1px solid #405b68;background:#142a37;color:#d4e9ee;cursor:pointer}
+.terrain-material:before{content:'';width:28px;height:28px;flex:none;border:1px solid #ffffff33;border-radius:6px;background:var(--mat);box-shadow:inset 0 0 8px #0003}
+.terrain-material.selected,.terrain-mode.selected{border-color:#6ee7c2!important;box-shadow:0 0 0 1px #6ee7c277;background:#20504a;color:white}
+#terrainPaintControls .hint{line-height:1.4}
 </style>
 <header><div class="brand"><div class="logo">R↗W</div><div><b>BRIDGE STUDIO</b><small>GAME MAKER 0.19.1</small></div></div><input id="projectName" value="Coin Rush" title="Название проекта"><span class="sep"></span><button id="newProject" title="Новый проект">Новый</button><button id="loadProject">Открыть</button><button id="saveProject" title="Скачать проект .rwscene">Сохранить ↓</button><button id="saveNative" title="Сохранить проект в выбранный файл (при поддержке браузера)">В файл…</button><span id="dirtyMark" title="Изменения с момента последнего ручного сохранения">✓ Сохранено</span><button id="btnCheck" title="Проверить ошибки, модели и скрипты">✓ Проверить</button><button id="restoreDraft" title="Открыть историю резервных копий">⟲ Копии</button><div class="spacer"></div><button id="btnUpdates" class="mini hidden" title="Патчи Bridge Studio">↻ Патчи</button><button id="btnStop" class="hidden">■ Стоп</button><button id="btnPlay" class="play">▶ PLAY</button><select id="exportProfile" title="Профиль экспорта" style="width:145px"><option value="warpgame">WARPGAME · 3 МБ</option><option value="standalone">Standalone · CDN</option><option value="offline">Standalone · OFFLINE</option></select><button id="btnBuild" class="main">↓ BUILD HTML</button></header>
 
@@ -120,6 +125,15 @@
 <p class="hint">Создай плоскую карту или используй тестовый склон выше. Стартовая платформа удалится только если она стандартная; Ctrl+Z вернёт её. Включи Terrain сверху.</p>
 <div class="twocol"><label class="hint">Чанков X<select id="terrainCols"><option value="1">1</option><option value="2" selected>2</option><option value="4">4</option></select></label><label class="hint">Чанков Z<select id="terrainRows"><option value="1">1</option><option value="2" selected>2</option><option value="4">4</option></select></label></div>
 <button id="terrainFlat" class="full">＋ Создать плоский Terrain</button><button id="terrainDemo" class="full" style="margin-top:6px">▦ Тестовый склон · пример</button>
+<div class="twocol" style="margin-top:12px"><button type="button" class="terrain-mode selected" data-terrain-mode="sculpt">⛰ SCULPT</button><button type="button" class="terrain-mode" data-terrain-mode="paint">◈ PAINT</button></div>
+<div id="terrainPaintControls" class="hidden"><h3>ПАЛИТРА ПОВЕРХНОСТИ</h3>
+<p class="hint">Рисуй траву, песок, землю и камень прямо по холмам. Весовые слои плавно смешиваются и сохраняются в проекте.</p>
+<div class="terrain-material-grid">
+<button type="button" class="terrain-material selected" data-terrain-material="grass" style="--mat:#519141">Трава</button>
+<button type="button" class="terrain-material" data-terrain-material="sand" style="--mat:#cdaf6f">Песок</button>
+<button type="button" class="terrain-material" data-terrain-material="dirt" style="--mat:#855b3e">Земля</button>
+<button type="button" class="terrain-material" data-terrain-material="rock" style="--mat:#828b91">Камень</button>
+</div><p class="hint">Для удаления другого материала закрась участок травой.</p></div>
 <div id="terrainSculptControls">
 <div class="twocol" style="margin:8px 0">
 <button type="button" data-terrain-brush="raise" class="terrain-brush selected">↑ Raise</button>
