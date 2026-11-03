@@ -1,0 +1,70 @@
+name: Validate terrain sources
+
+on:
+  push:
+    paths:
+      - 'src/**'
+      - 'updates/v0.18.5/**'
+      - 'tools/build_studio.py'
+      - 'tests/terrain-core.cjs'
+      - 'tests/terrain-browser.cjs'
+      - '.github/workflows/terrain-source.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'updates/v0.18.5/**'
+      - 'tools/build_studio.py'
+      - 'tests/terrain-core.cjs'
+      - '.github/workflows/terrain-source.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  terrain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate source syntax
+        run: |
+          node --check src/terrain_core.js
+          node --check src/game_runtime.js
+          node --check src/studio.js
+          python3 -m py_compile tools/build_studio.py
+      - name: Verify release candidate bytes and SHA-256
+        run: |
+          python3 tools/build_studio.py --check updates/v0.18.5/studio.html
+          python3 - <<'PY'
+          import hashlib
+          from pathlib import Path
+          b=Path("updates/v0.18.5/studio.html").read_bytes()
+          print("RELEASE_0185_SIZE="+str(len(b)))
+          print("RELEASE_0185_SHA256="+hashlib.sha256(b).hexdigest())
+          assert 250000 < len(b) < 1000000
+          PY
+      - name: Run terrain geometry and surface tests
+        run: node tests/terrain-core.cjs
+      - name: Build single-file editor from sources
+        run: |
+          python3 tools/build_studio.py --output /tmp/bridge-terrain-studio.html
+          python3 - <<'PY'
+          from pathlib import Path
+          html=Path('/tmp/bridge-terrain-studio.html').read_text(encoding='utf-8')
+          assert '/* @bridge:' not in html
+          assert html.count('BridgeTerrainCore')>=4
+          assert 'embedded-terrain-core' in html
+          assert 'terrainDemo' in html
+          print('Built editor:', len(html.encode('utf-8')), 'bytes')
+          PY
+
+  browser:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install browser testing dependencies
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1 three@0.128.0
+          npx playwright install --with-deps chromium
+      - name: Terrain browser integration (SwiftShader WebGL)
+        run: node tests/terrain-browser.cjs
