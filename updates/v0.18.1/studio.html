@@ -1040,7 +1040,7 @@ function attachLiveUpdates(){
  }
  async function loadNotes(){
   try{
-   var response=await fetch('https://jonhspoky2.github.io/bridge-studio-updates/updates/changelog.json',{cache:'no-store'});
+   var response=await fetch('https://raw.githubusercontent.com/jonhspoky2/bridge-studio-updates/main/updates/changelog.json',{cache:'no-store'});
    if(!response.ok)throw Error('Release notes not available');
    var payload=await response.json();if(!payload||!payload.versions||typeof payload.versions!=='object')throw Error('Invalid notes');
    Object.keys(payload.versions).forEach(function(version){
