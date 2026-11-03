@@ -4,9 +4,10 @@ on:
   push:
     paths:
       - 'src/**'
-      - 'updates/v0.19.0/**'
+      - 'updates/v0.19.1/**'
       - 'tools/build_studio.py'
       - 'tests/terrain-core.cjs'
+      - 'tests/terrain-walk.cjs'
       - 'tests/terrain-browser.cjs'
       - 'tests/terrain-sculpt.cjs'
       - 'tests/terrain-sculpt-performance.cjs'
@@ -15,9 +16,10 @@ on:
   pull_request:
     paths:
       - 'src/**'
-      - 'updates/v0.19.0/**'
+      - 'updates/v0.19.1/**'
       - 'tools/build_studio.py'
       - 'tests/terrain-core.cjs'
+      - 'tests/terrain-walk.cjs'
       - '.github/workflows/terrain-source.yml'
   workflow_dispatch:
 
@@ -44,22 +46,23 @@ jobs:
           html=Path('/tmp/bridge-v0190-preview.html').read_text(encoding='utf-8')
           assert '/* @bridge:' not in html
           assert 'BridgeTerrainSculpt' in html
-          print('Terrain 0.19.0 preview bytes',len(html.encode('utf-8')))
+          print('Terrain 0.19.1 preview bytes',len(html.encode('utf-8')))
           PY
-      - name: Verify v0.19.0 release candidate reproducibility
+      - name: Verify v0.19.1 release candidate reproducibility
         run: |
-          python3 tools/build_studio.py --check updates/v0.19.0/studio.html
+          python3 tools/build_studio.py --check updates/v0.19.1/studio.html
           python3 - <<'PY'
           from pathlib import Path
           import hashlib
-          data=Path('updates/v0.19.0/studio.html').read_bytes()
+          data=Path('updates/v0.19.1/studio.html').read_bytes()
           assert 250000 < len(data) < 1000000
-          print('BRIDGE_V0190_SIZE='+str(len(data)))
-          print('BRIDGE_V0190_SHA256='+hashlib.sha256(data).hexdigest())
+          print('BRIDGE_V0191_SIZE='+str(len(data)))
+          print('BRIDGE_V0191_SHA256='+hashlib.sha256(data).hexdigest())
           PY
       - name: Run terrain geometry and surface tests
         run: |
           node tests/terrain-core.cjs
+          node tests/terrain-walk.cjs
           node tests/terrain-sculpt.cjs
           node tests/terrain-sculpt-performance.cjs
       - name: Build single-file editor from sources
