@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'src/**'
+      - 'updates/v0.18.5/**'
       - 'tools/build_studio.py'
       - 'tests/terrain-core.cjs'
       - 'tests/terrain-browser.cjs'
@@ -11,6 +12,7 @@ on:
   pull_request:
     paths:
       - 'src/**'
+      - 'updates/v0.18.5/**'
       - 'tools/build_studio.py'
       - 'tests/terrain-core.cjs'
       - '.github/workflows/terrain-source.yml'
@@ -30,6 +32,17 @@ jobs:
           node --check src/game_runtime.js
           node --check src/studio.js
           python3 -m py_compile tools/build_studio.py
+      - name: Verify release candidate bytes and SHA-256
+        run: |
+          python3 tools/build_studio.py --check updates/v0.18.5/studio.html
+          python3 - <<'PY'
+          import hashlib
+          from pathlib import Path
+          b=Path("updates/v0.18.5/studio.html").read_bytes()
+          print("RELEASE_0185_SIZE="+str(len(b)))
+          print("RELEASE_0185_SHA256="+hashlib.sha256(b).hexdigest())
+          assert 250000 < len(b) < 1000000
+          PY
       - name: Run terrain geometry and surface tests
         run: node tests/terrain-core.cjs
       - name: Build single-file editor from sources
