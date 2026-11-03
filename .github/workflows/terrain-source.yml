@@ -6,6 +6,7 @@ on:
       - 'src/**'
       - 'tools/build_studio.py'
       - 'tests/terrain-core.cjs'
+      - 'tests/terrain-browser.cjs'
       - '.github/workflows/terrain-source.yml'
   pull_request:
     paths:
@@ -43,3 +44,14 @@ jobs:
           assert 'terrainDemo' in html
           print('Built editor:', len(html.encode('utf-8')), 'bytes')
           PY
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install browser testing dependencies
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1 three@0.128.0
+          npx playwright install --with-deps chromium
+      - name: Terrain browser integration (SwiftShader WebGL)
+        run: node tests/terrain-browser.cjs
