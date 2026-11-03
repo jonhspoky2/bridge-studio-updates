@@ -32,7 +32,7 @@ const {chromium}=require('playwright');
   await page.goto('http://127.0.0.1:41437/test/studio.html');
   await page.waitForFunction(()=>typeof window.__bridgeQA==='function',{timeout:15000});
   assert.equal(await page.locator('#terrainSculptPanel').count(),1);
-  await page.click('#terrainFlat');
+  await page.click('[data-tab="terrain"]');await page.click('#terrainFlat');
   await page.waitForFunction(()=>window.__bridgeQA().project.terrain?.chunks?.length===4);
   const flat=await page.evaluate(()=>window.__bridgeQA().project);
   assert.equal(flat.terrain.chunks.length,4);
