@@ -96,7 +96,7 @@ const {chromium}=require('playwright');
   const saved=JSON.parse(await fs.readFile(await downloaded.path(),'utf8'));
   assert.deepEqual(saved.terrain,done.terrain);
   await page.locator('#projectInput').setInputFiles({name:'terrain-0190.rwscene',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(saved))});
-  await page.waitForFunction(()=>window.__bridgeQA().project.terrain?.chunks?.length===4);
+  await page.waitForFunction(()=>window.__bridgeQA().project.terrain?.chunks?.length===4 && window.__bridgeQA().dirty===false && document.getElementById('status').textContent.startsWith('Проект открыт:'));
   assert.deepEqual((await page.evaluate(()=>window.__bridgeQA().project)).terrain,done.terrain);
   // After loading a clean project, cancel must restore both heights and the clean indicator.
   const cleanBefore=await page.evaluate(()=>window.__bridgeQA());
