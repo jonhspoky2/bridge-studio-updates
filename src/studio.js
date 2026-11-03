@@ -13,7 +13,7 @@ var T=window.THREE, runtime={files:[],fileUrls:[]};function warn(s){console.warn
 
 var editorSun=null,editorAmbient=null,textureCache={},assetPreview=null,assetThumbCache={};
 var editorKeys={},editorCamActive=false,editorCamSpeed=6,editorCamRightMouse=false,editorCameraTick=0;
-var gridHelper=null,terrainMeshes=[],readyFrames=0,playWatchdog=null,sceneFrames=0,lastSceneError=null;var project=null,selectedId=null,selectedIds=[],selectionOutlines=[],selectedKind='world',activeTab='world',editorScene=null,editorCamera=null,renderer=null,orbit={yaw:.64,pitch:.95,distance:17,target:null},mouse=null,meshes={},outline=null,currentPlayUrl=null,playing=false,gizmo=null,gizmoHits=[],toolMode="move",axisDrag=null,undoStack=[],redoStack=[];
+var gridHelper=null,terrainMeshes=[],terrainStroke=null,terrainCursor=null,terrainBrush='raise',readyFrames=0,playWatchdog=null,sceneFrames=0,lastSceneError=null;var project=null,selectedId=null,selectedIds=[],selectionOutlines=[],selectedKind='world',activeTab='world',editorScene=null,editorCamera=null,renderer=null,orbit={yaw:.64,pitch:.95,distance:17,target:null},mouse=null,meshes={},outline=null,currentPlayUrl=null,playing=false,gizmo=null,gizmoHits=[],toolMode="move",axisDrag=null,undoStack=[],redoStack=[];
 function id(){return 'obj_'+Math.random().toString(36).slice(2,10);}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function status(s,isError){$('status').textContent=s;$('status').style.borderColor=isError?'#955050':'#34526a';}
@@ -94,8 +94,12 @@ function addMiniRover(){var b64=demoAsset();if(!b64||b64==='{}'){status('Дем�
 function syncGameSettings(){if(!project||!project.settings)return;var v=$('gameSpeed'),j=$('gameJump');if(v)v.value=project.settings.moveSpeed||5;if(j)j.value=project.settings.jumpPower||7.6;var hp=$('gameHealth');if(hp)hp.value=project.settings.maxHealth||100;var volume=$('gameVolume');if(volume)volume.value=project.settings.audioVolume==null?.35:project.settings.audioVolume;}
 function initialProject(){var d=sample(),b64=demoAsset();if(b64&&b64!=='{}')d.objects.push({id:'demo_rover',name:'Mini Rover · GLB',type:'glb',position:[-3,0,-2.7],rotation:[0,0,0],scale:[1,1,1],color:'#ffffff',solid:false,action:'message',message:'Настоящая GLB-модель Mini Rover',value:0,asset:b64});return normalizeDoc(d);}
 function remember(){if(!project)return;setDirty(true);undoStack.push(JSON.stringify(project));if(undoStack.length>60)undoStack.shift();redoStack.length=0;}
-function historyBack(){if(!undoStack.length)return;setDirty(true);redoStack.push(JSON.stringify(project));restoreHistory(JSON.parse(undoStack.pop()));}
-function historyForward(){if(!redoStack.length)return;setDirty(true);undoStack.push(JSON.stringify(project));restoreHistory(JSON.parse(redoStack.pop()));}
+function historyBack(){if(terrainStroke||!undoStack.length)return;var change=undoStack.pop();setDirty(true);
+ if(typeof change==='string'){redoStack.push(JSON.stringify(project));restoreHistory(JSON.parse(change));}
+ else if(change&&change.kind==='terrain-stroke'){redoStack.push(change);var chunks=window.BridgeTerrainSculpt.applyCommand(project.terrain,change,'before');refreshTerrainChunks(chunks);status('Отменён мазок Terrain.');}}
+function historyForward(){if(terrainStroke||!redoStack.length)return;var change=redoStack.pop();setDirty(true);
+ if(typeof change==='string'){undoStack.push(JSON.stringify(project));restoreHistory(JSON.parse(change));}
+ else if(change&&change.kind==='terrain-stroke'){undoStack.push(change);var chunks=window.BridgeTerrainSculpt.applyCommand(project.terrain,change,'after');refreshTerrainChunks(chunks);status('Повторён мазок Terrain.');}}
 function restoreHistory(d){var kind=selectedKind,old=selectedId,previous=selectedIds.slice();project=normalizeDoc(d);resetTextureCache();refreshAssetBrowser();refreshLightingControls();$('projectName').value=d.name;syncGameSettings();refreshScene();var entries=kind==='world'?d.objects:kind==='ui'?d.ui:d.scripts;select(kind,entries.some(function(x){return x.id===old;})?old:entries[0]&&entries[0].id);if(kind==='world'&&previous.length>1)setSelectedIds(previous.filter(function(x){return d.objects.some(function(o){return o.id===x;});}),old);status('История изменений восстановлена.');}
 function blank(){return normalizeDoc({format:'rwbridge.game',version:2,name:'Новая игра',settings:{sky:'#88c5f1',moveSpeed:5,jumpPower:7.6},objects:[{id:id(),name:'Земля',type:'ground',position:[0,-.5,0],rotation:[0,0,0],scale:[16,1,16],color:'#57827d',solid:true,action:'none',value:0},{id:id(),name:'Spawn',type:'spawn',position:[0,0,0],rotation:[0,0,0],scale:[1,1,1],color:'#66e8ca',solid:false,action:'none',value:0}],ui:[],scripts:[]});}
 function pick(){return (selectedKind==='world'?project.objects:selectedKind==='ui'?project.ui:project.scripts).find(function(o){return o.id===selectedId;});}
@@ -110,8 +114,84 @@ else{mesh=new T.Mesh(new T.BoxGeometry(1,1,1),mat);}
 mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);editorScene.add(g);meshes[d.id]=g;
 if(d.type==='glb'&&getAsset(d)){try{var bytes=bytesFromB64(getAsset(d)),decoded=decodeGlb(bytes);parseData(decoded.json,decoded.bin).then(function(r){if(meshes[d.id]!==g){disposeVisual(r.object);return;}decorateGlb(r.object,d,project);g.add(r.object);mesh.visible=false;refreshSelection();}).catch(function(e){status('Модель '+d.name+': '+e.message,true);});}catch(e){status(e.message,true);}}
 return g;}
-function refreshTerrain(){terrainMeshes.forEach(function(mesh){editorScene.remove(mesh);disposeVisual(mesh);});terrainMeshes=[];if(project.terrain){try{window.BridgeTerrainCore.validate(project.terrain);terrainMeshes=window.BridgeTerrainCore.createMeshes(T,project.terrain);terrainMeshes.forEach(function(mesh){editorScene.add(mesh);});}catch(e){status('Terrain: '+e.message,true);}}}
+function refreshTerrain(){hideTerrainCursor();terrainMeshes.forEach(function(mesh){editorScene.remove(mesh);disposeVisual(mesh);});terrainMeshes=[];if(project.terrain){try{window.BridgeTerrainCore.validate(project.terrain);terrainMeshes=window.BridgeTerrainCore.createMeshes(T,project.terrain);terrainMeshes.forEach(function(mesh){editorScene.add(mesh);});}catch(e){status('Terrain: '+e.message,true);}}}
 function addDemoTerrain(){if(project.terrain&&project.terrain.chunks&&project.terrain.chunks.length){status('Terrain уже создан; сохрани проект перед заменой рельефа.',true);return;}remember();project.terrain=window.BridgeTerrainCore.demoSlope();var s=project.objects.find(function(o){return o.type==='spawn';});if(s){var y=window.BridgeTerrainCore.sampleHeight(project.terrain,-8,5);s.position=[-8,y+.25,5];}refreshScene();refreshLists();setDirty(true);status('Создан тестовый склон из 2 участков. Проверяй Play, сохранение и экспорт.');}
+
+function terrainOptions(){return {mode:terrainBrush,radius:Number($('terrainRadius').value),strength:Number($('terrainStrength').value),hardness:Number($('terrainHardness').value)};}
+function refreshTerrainChunks(chunks){
+ if(!project.terrain||!chunks||!chunks.length)return;
+ window.BridgeTerrainSculpt.refreshMeshes(T,project.terrain,terrainMeshes,chunks);
+}
+function addFlatTerrain(){
+ if(project.terrain&&project.terrain.chunks&&project.terrain.chunks.length){status('Terrain уже существует. Сохрани проект и создай новый для другой сетки.',true);return;}
+ try{
+  var cols=Number($('terrainCols').value),rows=Number($('terrainRows').value);
+  var fresh=window.BridgeTerrainSculpt.createFlat(cols,rows,16,1);
+  remember();project.terrain=fresh;refreshTerrain();fitScene();setTool('terrain');
+  status('Создан Terrain '+cols+'×'+rows+' участков. Рисуй кистью в 3D-окне.');
+ }catch(e){status(e.message,true);}
+}
+function ensureTerrainCursor(){
+ if(!editorScene||!T||terrainCursor)return;
+ var geometry=new T.BufferGeometry(),positions=new Float32Array(64*3);
+ geometry.setAttribute('position',new T.BufferAttribute(positions,3));
+ var material=new T.LineBasicMaterial({color:0x62f4f1,transparent:true,opacity:.95,depthTest:false,depthWrite:false});
+ terrainCursor=new T.LineLoop(geometry,material);terrainCursor.renderOrder=999;terrainCursor.visible=false;editorScene.add(terrainCursor);
+}
+function hideTerrainCursor(){if(terrainCursor)terrainCursor.visible=false;}
+function showTerrainCursor(x,z){
+ ensureTerrainCursor();if(!terrainCursor||!project.terrain||toolMode!=='terrain'||playing){hideTerrainCursor();return;}
+ var p=terrainCursor.geometry.getAttribute('position'),radius=terrainOptions().radius;
+ for(var i=0;i<64;i++){
+  var a=Math.PI*2*i/64,px=x+radius*Math.cos(a),pz=z+radius*Math.sin(a);
+  var py=window.BridgeTerrainCore.sampleHeight(project.terrain,px,pz);
+  if(py===null)py=window.BridgeTerrainCore.sampleHeight(project.terrain,x,z)||0;
+  p.array[3*i]=px;p.array[3*i+1]=py+.065;p.array[3*i+2]=pz;
+ }
+ p.needsUpdate=true;terrainCursor.geometry.computeBoundingSphere();terrainCursor.visible=true;
+}
+function terrainIntersection(e){
+ if(!terrainMeshes.length)return null;
+ var hits=getRay(e).intersectObjects(terrainMeshes,false);
+ return hits.length?hits[0].point:null;
+}
+function updateTerrainUI(){
+ document.querySelectorAll('[data-terrain-brush]').forEach(function(btn){btn.classList.toggle('selected',btn.dataset.terrainBrush===terrainBrush);});
+ [['terrainRadius','terrainRadiusLabel',1],['terrainStrength','terrainStrengthLabel',1],['terrainHardness','terrainHardnessLabel',2]].forEach(function(a){
+  $(a[1]).textContent=Number($(a[0]).value).toFixed(a[2]);
+ });
+}
+function startTerrainStroke(e,point){
+ try{
+  var stroke=window.BridgeTerrainSculpt.begin(project.terrain,terrainOptions(),point.x,point.z);
+  var result=window.BridgeTerrainSculpt.dab(stroke,point.x,point.z,.033);
+  terrainStroke={stroke:stroke,x:point.x,z:point.z,lastTime:e.timeStamp||performance.now(),pointerId:e.pointerId};
+  refreshTerrainChunks(result.chunks);if(result.vertices)setDirty(true);
+  showTerrainCursor(point.x,point.z);
+ }catch(error){status('Кисть: '+error.message,true);}
+}
+function moveTerrainStroke(e,point){
+ if(!terrainStroke||!point)return;
+ try{
+  var t=e.timeStamp||performance.now(),dt=Math.max(.005,Math.min(.08,(t-terrainStroke.lastTime)/1000||.016));
+  var result=window.BridgeTerrainSculpt.applyPath(terrainStroke.stroke,terrainStroke.x,terrainStroke.z,point.x,point.z,dt);
+  terrainStroke.x=point.x;terrainStroke.z=point.z;terrainStroke.lastTime=t;
+  refreshTerrainChunks(result.chunks);if(result.vertices)setDirty(true);
+  showTerrainCursor(point.x,point.z);
+ }catch(error){status('Кисть: '+error.message,true);endTerrainStroke(true);}
+}
+function endTerrainStroke(cancelled){
+ if(!terrainStroke)return;
+ var stroke=terrainStroke.stroke;terrainStroke=null;
+ try{
+  if(cancelled){refreshTerrainChunks(window.BridgeTerrainSculpt.cancel(stroke));status('Мазок Terrain отменён.');}
+  else{
+   var cmd=window.BridgeTerrainSculpt.commit(stroke);
+   if(cmd){undoStack.push(cmd);if(undoStack.length>60)undoStack.shift();redoStack.length=0;setDirty(true);status('Terrain: мазок завершён · '+cmd.changes.length+' вершин · Ctrl+Z для отмены.');}
+  }
+ }catch(e){status('Ошибка завершения мазка: '+e.message,true);}
+}
+
 function refreshScene(){if(!T)return;Object.keys(meshes).forEach(function(key){editorScene.remove(meshes[key]);disposeVisual(meshes[key]);});meshes={};project.objects.forEach(createVisual);refreshTerrain();applyLighting();refreshSelection();}
 function setSelectedIds(ids,primary){selectedKind='world';selectedIds=Array.from(new Set(ids.filter(function(v){return project.objects.some(function(o){return o.id===v;});})));
  selectedId=selectedIds.indexOf(primary)>=0?primary:(selectedIds[selectedIds.length-1]||null);refreshLists();refreshInspector();refreshSelection();}
@@ -125,7 +205,7 @@ function selectionCenter(){var targets=selectedObjects();if(!targets.length)retu
 function updateSelectionActions(){var count=selectedIds.length;var hint=$('selectionCount');if(hint)hint.textContent=count?count+' выделено · Ctrl+клик: добавить · Shift: диапазон':'Ctrl+клик: выделить несколько';['alignX','alignY','alignZ','distributeX','distributeZ','groupSelection','ungroupSelection'].forEach(function(id){var el=$(id);if(el)el.disabled=(count<(id==='groupSelection'||id==='ungroupSelection'?1:2));});}
 function refreshSelection(){if(!editorScene)return;var old=selectionOutlines.concat(outline?[outline]:[]);old.forEach(function(a){editorScene.remove(a);if(a.geometry)a.geometry.dispose();if(a.material)a.material.dispose();});outline=null;selectionOutlines=[];
  if(selectedKind==='world'){selectedIds.forEach(function(idValue){var obj=meshes[idValue];if(!obj)return;var line=new T.BoxHelper(obj,idValue===selectedId?0xffe09c:0x6dd9ff);editorScene.add(line);if(idValue===selectedId)outline=line;else selectionOutlines.push(line);});}
- if(gizmo)gizmo.visible=selectedKind==='world'&&selectedIds.length>0;updateSelectionActions();}
+ if(gizmo)gizmo.visible=toolMode!=='terrain'&&selectedKind==='world'&&selectedIds.length>0;updateSelectionActions();}
 function refreshLists(){var list=$('objectList');list.innerHTML='';var groups=new Map();project.objects.forEach(function(o){var group=String(o.group||'');if(!groups.has(group))groups.set(group,[]);groups.get(group).push(o);});
  groups.forEach(function(objects,groupName){if(groupName){var header=document.createElement('button');header.className='group-heading';header.textContent='▦ '+groupName+' ('+objects.length+')';header.title='Нажми для выбора всей группы';header.onclick=function(){setSelectedIds(objects.map(function(o){return o.id;}),objects[0].id);};list.appendChild(header);}
  objects.forEach(function(o){var b=document.createElement('button');b.className='listbtn'+(selectedKind==='world'&&selectedIds.indexOf(o.id)>=0?' active':'');b.dataset.id=o.id;b.innerHTML='<span>'+esc(o.name)+'</span><small>'+esc(o.type.toUpperCase())+'</small>';b.onclick=function(e){selectWorld(o.id,e);};list.appendChild(b);});});
@@ -323,7 +403,7 @@ function verifyLoadedDoc(obj){
 } 
 function loadDoc(obj,fromFile){verifyLoadedDoc(obj);if(project)recordSnapshot(true);stop();resetTextureCache();closeAssetPreview();assetThumbCache={};project=normalizeDoc(clone(obj));refreshAssetBrowser();refreshLightingControls();nativeHandle=null;draftLast='';setDirty(false);undoStack=[];redoStack=[];$('projectName').value=project.name;syncGameSettings();refreshScene();select('world',project.objects[0]&&project.objects[0].id);setTab('world');lastExplicitSave=fromFile?sceneData():'';setDirty(!fromFile);status('Проект открыт: '+project.name);}
 /* Three.js r128 axis manipulators. Objects are edited in world axes, not via numeric fields. */
-function setTool(mode){if(['move','rotate','scale'].indexOf(mode)<0)return;toolMode=mode;document.querySelectorAll('[data-tool]').forEach(function(btn){btn.classList.toggle('selected',btn.dataset.tool===mode);});makeGizmo();}
+function setTool(mode){if(['move','rotate','scale','terrain'].indexOf(mode)<0)return;if(terrainStroke)endTerrainStroke(false);toolMode=mode;if(mode!=='terrain')hideTerrainCursor();document.querySelectorAll('[data-tool]').forEach(function(btn){btn.classList.toggle('selected',btn.dataset.tool===mode);});makeGizmo();refreshSelection();}
 function axisVector(which){return which==='x'?new T.Vector3(1,0,0):which==='y'?new T.Vector3(0,1,0):new T.Vector3(0,0,1);}
 function makeGizmo(){if(!editorScene||!T)return;if(gizmo){editorScene.remove(gizmo);gizmo.traverse(function(c){if(c.geometry)c.geometry.dispose();if(c.material)c.material.dispose();});}gizmo=new T.Group();gizmo.userData.bridgeGizmo=true;editorScene.add(gizmo);gizmoHits=[];
 ['x','y','z'].forEach(function(which){var v=axisVector(which),color={x:0xff6176,y:0x73ef9d,z:0x64aaff}[which];var mat=new T.MeshBasicMaterial({color:color,depthTest:false,depthWrite:false,side:T.DoubleSide});
@@ -358,17 +438,28 @@ var cv=renderer.domElement;cv.tabIndex=0;cv.setAttribute('aria-label','3D ред
 cv.addEventListener('blur',function(){editorKeys={};editorCamActive=false;});
 cv.oncontextmenu=function(e){e.preventDefault();};
 cv.addEventListener('pointerdown',function(e){if(playing||e.button>2)return;cv.focus({preventScroll:true});editorCamActive=true;editorCamRightMouse=e.button===2;
+ if(toolMode==='terrain'&&e.button===0&&!e.altKey){
+  if(!project.terrain){status('Создай Terrain, прежде чем рисовать.',true);return;}
+  var point=terrainIntersection(e);
+  if(point){e.preventDefault();startTerrainStroke(e,point);cv.setPointerCapture(e.pointerId);cv.classList.add('dragging');}
+  return;
+ }
 if(e.button===0&&!e.altKey){var axis=!e.shiftKey&&axisHit(e);if(axis){startAxisDrag(e,axis);cv.setPointerCapture(e.pointerId);cv.classList.add('dragging');return;}
 var hits=getRay(e).intersectObjects(Object.values(meshes),true);if(hits.length){var o=hits[0].object;while(o&&!o.userData.id)o=o.parent;if(o&&o.userData.id){setTab('world');if(e.ctrlKey||e.metaKey){selectWorld(o.userData.id,e);cv.setPointerCapture(e.pointerId);return;}if(e.shiftKey&&selectedIds.length>1){selectWorld(o.userData.id,e);cv.setPointerCapture(e.pointerId);return;}if(selectedIds.indexOf(o.userData.id)<0)select('world',o.userData.id);if(toolMode==='move'||e.shiftKey){startGroundDrag(e,o.userData.id);cv.setPointerCapture(e.pointerId);cv.classList.add('dragging');return;}cv.setPointerCapture(e.pointerId);return;}}}
 mouse={x:e.clientX,y:e.clientY,yaw:orbit.yaw,pitch:orbit.pitch,tx:orbit.target.x,ty:orbit.target.y,tz:orbit.target.z,button:e.button,moved:false};cv.setPointerCapture(e.pointerId);cv.classList.add('dragging');});
-cv.addEventListener('pointermove',function(e){if(axisDrag){applyAxisDrag(e);return;}if(!mouse)return;var dx=e.clientX-mouse.x,dy=e.clientY-mouse.y;if(Math.abs(dx)+Math.abs(dy)>3)mouse.moved=true;if(mouse.button===1){var moveSpeed=orbit.distance*.0018;var right=new T.Vector3(Math.cos(orbit.yaw),0,-Math.sin(orbit.yaw));orbit.target.set(mouse.tx,mouse.ty,mouse.tz).addScaledVector(right,-dx*moveSpeed);orbit.target.y+=dy*moveSpeed;}
+cv.addEventListener('pointermove',function(e){
+ if(toolMode==='terrain'&&!playing){
+  var point=terrainIntersection(e);if(point)showTerrainCursor(point.x,point.z);else hideTerrainCursor();
+  if(terrainStroke){if(point)moveTerrainStroke(e,point);return;}
+ }
+ if(axisDrag){applyAxisDrag(e);return;}if(!mouse)return;var dx=e.clientX-mouse.x,dy=e.clientY-mouse.y;if(Math.abs(dx)+Math.abs(dy)>3)mouse.moved=true;if(mouse.button===1){var moveSpeed=orbit.distance*.0018;var right=new T.Vector3(Math.cos(orbit.yaw),0,-Math.sin(orbit.yaw));orbit.target.set(mouse.tx,mouse.ty,mouse.tz).addScaledVector(right,-dx*moveSpeed);orbit.target.y+=dy*moveSpeed;}
 else {orbit.yaw=mouse.yaw-dx*.006;orbit.pitch=Math.max(.08,Math.min(3.04,mouse.pitch-dy*.006));}});
-function finishPointer(e){if(axisDrag){if(axisDrag.changed){status('Изменён объект '+axisDrag.data.name+' · '+axisDrag.mode.toUpperCase()+' · ось '+axisDrag.axis.toUpperCase());}else if(undoStack.length)undoStack.pop();axisDrag=null;}mouse=null;editorCamRightMouse=false;cv.classList.remove('dragging');if(e&&cv.hasPointerCapture&&cv.hasPointerCapture(e.pointerId))cv.releasePointerCapture(e.pointerId);}
+function finishPointer(e){if(terrainStroke){endTerrainStroke(e&&e.type==='pointercancel');}if(axisDrag){if(axisDrag.changed){status('Изменён объект '+axisDrag.data.name+' · '+axisDrag.mode.toUpperCase()+' · ось '+axisDrag.axis.toUpperCase());}else if(undoStack.length)undoStack.pop();axisDrag=null;}mouse=null;editorCamRightMouse=false;cv.classList.remove('dragging');if(e&&cv.hasPointerCapture&&cv.hasPointerCapture(e.pointerId))cv.releasePointerCapture(e.pointerId);}
 cv.addEventListener('pointerup',finishPointer);cv.addEventListener('pointercancel',finishPointer);
 cv.addEventListener('wheel',function(e){e.preventDefault();orbit.distance=Math.max(.5,Math.min(200,orbit.distance*Math.exp(e.deltaY*.001)));},{passive:false});
 var prevSize=[0,0];function frame(now){requestAnimationFrame(frame);if(!renderer)return;
 var dt=Math.min(.06,Math.max(0,((now||performance.now())-(editorCameraTick||((now||performance.now())-16)))/1000));editorCameraTick=now||performance.now();
-if(!playing&&!axisDrag&&editorCamActive){var k=editorKeys;var forward=(k.w?1:0)-(k.s?1:0),rightward=(k.d?1:0)-(k.a?1:0),vertical=(k.e?1:0)-(k.q?1:0);var magnitude=Math.hypot(forward,rightward,vertical);
+if(!playing&&!axisDrag&&!terrainStroke&&editorCamActive){var k=editorKeys;var forward=(k.w?1:0)-(k.s?1:0),rightward=(k.d?1:0)-(k.a?1:0),vertical=(k.e?1:0)-(k.q?1:0);var magnitude=Math.hypot(forward,rightward,vertical);
 if(magnitude){var step=editorCamSpeed*(k.shift?3.0:1)*dt/magnitude;orbit.target.x+=(-Math.sin(orbit.yaw)*forward+Math.cos(orbit.yaw)*rightward)*step;orbit.target.z+=(-Math.cos(orbit.yaw)*forward-Math.sin(orbit.yaw)*rightward)*step;orbit.target.y+=vertical*step;}}
 var w=viewport.clientWidth,h=viewport.clientHeight;if(w>0&&h>0&&(w!==prevSize[0]||h!==prevSize[1])){renderer.setSize(w,h);editorCamera.aspect=w/h;editorCamera.updateProjectionMatrix();prevSize=[w,h];}editorCamera.position.set(orbit.target.x+orbit.distance*Math.sin(orbit.pitch)*Math.sin(orbit.yaw),orbit.target.y+orbit.distance*Math.cos(orbit.pitch),orbit.target.z+orbit.distance*Math.sin(orbit.pitch)*Math.cos(orbit.yaw));editorCamera.lookAt(orbit.target);window.__bridgeEditorCameraDebug=function(){return {position:[editorCamera.position.x,editorCamera.position.y,editorCamera.position.z],target:[orbit.target.x,orbit.target.y,orbit.target.z],yaw:orbit.yaw,pitch:orbit.pitch,active:editorCamActive,keys:Object.keys(editorKeys).filter(function(k){return !!editorKeys[k];})};};updateGizmo();try{renderer.render(editorScene,editorCamera);if(outline)outline.update();sceneFrames++;if(sceneFrames===1){setRenderState('3D готов · '+(window.__bridgeThreeLoad&&window.__bridgeThreeLoad.source||'Three.js'));$('renderError').hidden=true;}if(sceneFrames%120===0){setRenderState('3D работает · '+project.objects.length+' объектов · '+((renderer.info&&renderer.info.render&&renderer.info.render.calls)||0)+' draw calls');}}catch(ex){if(lastSceneError!==ex.message){lastSceneError=ex.message;showRenderError('Ошибка отрисовки: '+ex.message);console.error(ex);}}}requestAnimationFrame(frame);
 }
@@ -504,6 +595,10 @@ projectAudit=function(){var res=_legacyProjectAudit();try{if(project.terrain)win
 function attach(){document.querySelectorAll('[data-tab]').forEach(function(b){b.onclick=function(){setTab(this.dataset.tab);};});[['addGround','ground'],['addBlock','block'],['addCoin','coin'],['addGoal','goal'],['addSpawn','spawn'],['addHazard','hazard'],['addNPC','npc'],['addMovingPlatform','movingPlatform']].forEach(function(pair){$(pair[0]).onclick=function(){addObject(pair[1]);};});$('addLabel').onclick=function(){addUI('label');};$('addButton').onclick=function(){addUI('button');};$('addPanel').onclick=function(){addUI('panel');};$('addProgress').onclick=function(){addUI('progress');};$('addUiDemo').onclick=addUiDemo;$('addShopItem').onclick=addShopItem;$('gameVolume').onchange=function(){remember();project.settings.audioVolume=Math.max(0,Math.min(1,+this.value||0));};$('testAudio').onclick=function(){try{var ctx=new (window.AudioContext||window.webkitAudioContext)(),osc=ctx.createOscillator(),g=ctx.createGain();osc.connect(g);g.connect(ctx.destination);osc.frequency.value=660;g.gain.setValueAtTime(.04,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+.18);osc.start();osc.stop(ctx.currentTime+.18);}catch(e){status('Web Audio недоступен: '+e.message,true);}};$('addScript').onclick=addScript;$('deleteItem').onclick=deleteSelected;$('duplicate').onclick=duplicateSelected;$('importGLB').onclick=function(){$('fileInput').click();};$('addDemo').onclick=addMiniRover;document.querySelectorAll('[data-tool]').forEach(function(btn){btn.onclick=function(){setTool(this.dataset.tool);};});$('focusSelection').onclick=focusSelected;$('fitScene').onclick=fitScene;$('gridEnabled').onchange=function(){if(gridHelper)gridHelper.visible=this.checked;};$('alignX').onclick=function(){alignSelection('x');};$('alignY').onclick=function(){alignSelection('y');};$('alignZ').onclick=function(){alignSelection('z');};$('distributeX').onclick=function(){distributeSelection('x');};$('distributeZ').onclick=function(){distributeSelection('z');};$('groupSelection').onclick=groupSelected;$('ungroupSelection').onclick=ungroupSelected;$('undoBtn').onclick=historyBack;$('redoBtn').onclick=historyForward;$('fileInput').onchange=function(e){importGLB(e.target.files);e.target.value='';};$('projectName').oninput=function(){project.name=this.value;setDirty(true);};$('btnPlay').onclick=play;$('playRetry').onclick=function(){stop();play();};$('playClose').onclick=stop;$('playLog').onclick=function(){var out={version:'0.17.1',time:new Date().toISOString(),project:project&&project.name,objectCount:project&&project.objects&&project.objects.length,three:window.__bridgeThreeLoad,userAgent:navigator.userAgent,playDiagnostic:$('playDiagnosticText').textContent,editorRenderState:$('renderState').textContent,projectAudit:projectAudit()};dl(JSON.stringify(out,null,2),'BridgeStudio-Diagnostics.json','application/json');};$('btnStop').onclick=stop;$('btnBuild').onclick=build;$('saveProject').onclick=save;$('btnCheck').onclick=checkProject;$('btnDemoReset').onclick=function(){if(confirm('Вернуть демонстрацию Coin Rush? Несохранённые изменения будут потеряны.')){loadDoc(sample());checkProject();}};$('restoreDraft').onclick=loadDraft;$('snapshotNow').onclick=function(){recordSnapshot(true).then(function(ok){status(ok?'Резервная копия сохранена.':'Не удалось записать копию в IndexedDB.',!ok);});};$('saveNative').onclick=saveNative;$('loadProject').onclick=function(){$('projectInput').click();};$('projectInput').onchange=async function(e){try{var f=e.target.files[0];if(f)loadDoc(JSON.parse(await f.text()),true);}catch(err){status(err.message,true);}e.target.value='';};$('newProject').onclick=function(){if(confirm('Создать новый проект? Сначала сохрани текущие изменения.'))loadDoc(blank());};$('cameraCenter').onclick=function(){orbit.yaw=.64;orbit.pitch=.95;orbit.distance=17;orbit.target.set(0,1,0);};$('cameraTop').onclick=function(){orbit.pitch=.13;orbit.distance=18;};$('editorSpeed').oninput=function(){editorCamSpeed=Number(this.value)||6;$('editorSpeedValue').textContent=editorCamSpeed.toFixed(1);};
 $('gameSpeed').onchange=function(){remember();project.settings.moveSpeed=Math.max(1,Math.min(18,Number(this.value)||5));this.value=project.settings.moveSpeed;status('Скорость игрока обновлена');};
 $('terrainDemo').onclick=addDemoTerrain;
+ $('terrainFlat').onclick=addFlatTerrain;
+ document.querySelectorAll('[data-terrain-brush]').forEach(function(b){b.onclick=function(){terrainBrush=this.dataset.terrainBrush;updateTerrainUI();setTool('terrain');};});
+ ['terrainRadius','terrainStrength','terrainHardness'].forEach(function(id){$(id).oninput=updateTerrainUI;});
+ updateTerrainUI();
 $('gameJump').onchange=function(){remember();project.settings.jumpPower=Math.max(3,Math.min(18,Number(this.value)||7.6));this.value=project.settings.jumpPower;status('Сила прыжка обновлена');};
  $('exportLibrary').onclick=exportLibrary;$('importLibrary').onclick=function(){$('libraryInput').click();};$('libraryInput').onchange=async function(e){try{var f=e.target.files[0];if(f)importLibrary(JSON.parse(await f.text()));}catch(err){status('Библиотека: '+err.message,true);}e.target.value='';};
  $('viewport').addEventListener('dragover',function(e){if(!playing){e.preventDefault();e.dataTransfer.dropEffect='copy';}});$('viewport').addEventListener('drop',function(e){if(playing)return;e.preventDefault();var assetId=e.dataTransfer.getData('application/x-bridge-asset'),prefabId=e.dataTransfer.getData('application/x-bridge-prefab'),pt=viewportDropPoint(e);if(assetId)addAssetInstance(assetId,pt);else if(prefabId)instantiatePrefab(prefabId,pt);else if(e.dataTransfer.files&&e.dataTransfer.files.length)importGLB(e.dataTransfer.files);});
@@ -521,10 +616,10 @@ window.addEventListener('keydown',function(e){
 if(playing){if(sendPlayKey(e,true))e.preventDefault();return;}
 var key=editorPhysicalKey(e);
 if(editorCamActive&&document.activeElement===renderer.domElement&&!e.ctrlKey&&!e.altKey&&['w','a','s','d','q','e','shift'].indexOf(key)>=0){editorKeys[key]=true;e.preventDefault();return;}
-if(e.ctrlKey&&e.key.toLowerCase()==='s'){e.preventDefault();save();return;}if(/input|textarea/i.test((document.activeElement||{}).tagName||''))return;if(e.ctrlKey&&e.key.toLowerCase()==='a'&&activeTab==='world'){e.preventDefault();setSelectedIds(project.objects.map(function(o){return o.id;}),selectedId);return;}if(e.ctrlKey&&e.key.toLowerCase()==='z'){e.preventDefault();if(e.shiftKey)historyForward();else historyBack();return;}if(e.ctrlKey&&e.key.toLowerCase()==='y'){e.preventDefault();historyForward();return;}if(e.key.toLowerCase()==='g'){setTool('move');return;}if(e.key.toLowerCase()==='r'){setTool('rotate');return;}if(e.key.toLowerCase()==='s'&&!e.ctrlKey){setTool('scale');return;}if(e.key.toLowerCase()==='f'){focusSelected();return;}if(e.key==='Home'){fitScene();return;}if(e.key==='Escape'){editorCamActive=false;editorKeys={};if(renderer)renderer.domElement.blur();select('world',null);return;}
+if(e.ctrlKey&&e.key.toLowerCase()==='s'){e.preventDefault();save();return;}if(/input|textarea/i.test((document.activeElement||{}).tagName||''))return;if(e.ctrlKey&&e.key.toLowerCase()==='a'&&activeTab==='world'){e.preventDefault();setSelectedIds(project.objects.map(function(o){return o.id;}),selectedId);return;}if(e.ctrlKey&&e.key.toLowerCase()==='z'){e.preventDefault();if(e.shiftKey)historyForward();else historyBack();return;}if(e.ctrlKey&&e.key.toLowerCase()==='y'){e.preventDefault();historyForward();return;}if(e.key.toLowerCase()==='g'){setTool('move');return;}if(e.key.toLowerCase()==='r'){setTool('rotate');return;}if(e.key.toLowerCase()==='s'&&!e.ctrlKey){setTool('scale');return;}if(e.key.toLowerCase()==='f'){focusSelected();return;}if(e.key==='Home'){fitScene();return;}if(e.key==='Escape'&&terrainStroke){e.preventDefault();endTerrainStroke(true);return;}if(e.key==='Escape'){editorCamActive=false;editorKeys={};if(renderer)renderer.domElement.blur();select('world',null);return;}
 if(selectedKind==='world'&&selectedIds.length&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','PageUp','PageDown'].indexOf(e.key)>=0){e.preventDefault();var step=e.shiftKey?1:($('snapEnabled').checked?.25:.1);remember();selectedObjects().forEach(function(chosen){if(e.key==='ArrowLeft')chosen.position[0]-=step;else if(e.key==='ArrowRight')chosen.position[0]+=step;else if(e.key==='ArrowUp')chosen.position[2]-=step;else if(e.key==='ArrowDown')chosen.position[2]+=step;else if(e.key==='PageUp')chosen.position[1]+=step;else if(e.key==='PageDown')chosen.position[1]-=step;var m=meshes[chosen.id];if(m)m.position.fromArray(chosen.position);});refreshSelection();updateGizmo();refreshInspector();status('Перемещено объектов: '+selectedIds.length);return;}
 if(e.key==='Delete'){deleteSelected();}if(e.ctrlKey&&e.key.toLowerCase()==='s'){e.preventDefault();save();}if(e.ctrlKey&&e.key.toLowerCase()==='d'){e.preventDefault();duplicateSelected();}});}
-initRenderer();project=normalizeDoc(initialProject());$('projectName').value=project.name;attach();attachGameplayEditor();syncGameSettings();refreshAssetBrowser();refreshLightingControls();if(editorScene)refreshScene();select('world',project.objects.some(function(o){return o.id==='demo_rover';})?'demo_rover':project.objects[0].id);lastExplicitSave=sceneData();setDirty(false);status('Bridge Studio v0.18.5 готов к работе.');setInterval(writeDraft,15000);document.addEventListener('visibilitychange',function(){if(document.hidden)writeDraft();});window.__bridgeQA=function(){return {project:clone(project),selectedIds:selectedIds.slice(),dirty:dirty};};window.__bridgeGameplayQA={getGraph:function(){return clone(graphSelected());},emitAvailable:!!window.BridgeGameplayCore,createGameplayDemo:createGameplayDemo};window.__bridgeV13={exportLibrary:exportLibrary,importLibrary:importLibrary,normalizeDoc:normalizeDoc,exportGameDoc:exportGameDoc,createPrefab:createPrefab,instantiatePrefab:instantiatePrefab,addAssetInstance:addAssetInstance,importPrefabFile:importPrefabFile,previewAsset:previewAsset};
+initRenderer();project=normalizeDoc(initialProject());$('projectName').value=project.name;attach();attachGameplayEditor();syncGameSettings();refreshAssetBrowser();refreshLightingControls();if(editorScene)refreshScene();select('world',project.objects.some(function(o){return o.id==='demo_rover';})?'demo_rover':project.objects[0].id);lastExplicitSave=sceneData();setDirty(false);status('Bridge Studio v0.18.5 готов к работе.');setInterval(writeDraft,15000);document.addEventListener('visibilitychange',function(){if(document.hidden)writeDraft();});window.__bridgeQA=function(){return {project:clone(project),selectedIds:selectedIds.slice(),dirty:dirty,tool:toolMode,sculpting:!!terrainStroke};};window.__bridgeGameplayQA={getGraph:function(){return clone(graphSelected());},emitAvailable:!!window.BridgeGameplayCore,createGameplayDemo:createGameplayDemo};window.__bridgeV13={exportLibrary:exportLibrary,importLibrary:importLibrary,normalizeDoc:normalizeDoc,exportGameDoc:exportGameDoc,createPrefab:createPrefab,instantiatePrefab:instantiatePrefab,addAssetInstance:addAssetInstance,importPrefabFile:importPrefabFile,previewAsset:previewAsset};
 // v0.17.2: signed live-patch UI. Works only through the dedicated local Windows host.
 
 function attachLiveUpdates(){
