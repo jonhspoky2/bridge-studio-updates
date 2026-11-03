@@ -59,6 +59,8 @@ const {chromium}=require('playwright');
   await page.click('#redoBtn');
   assert.deepEqual((await page.evaluate(()=>window.__bridgeQA().project)).terrain.chunks.map(c=>c.heights),afterHeights,'Redo restores drag');
   // Interleaved editing: Terrain delta commands and classic JSON snapshots share one history.
+  await page.click('[data-tab="world"]');
+  assert.equal(await page.evaluate(()=>window.__bridgeQA().tool),'move');
   await page.click('#addBlock');
   const withBlock=await page.evaluate(()=>window.__bridgeQA().project);
   assert.equal(withBlock.objects.length,raised.objects.length+1);
@@ -70,6 +72,8 @@ const {chromium}=require('playwright');
   assert.deepEqual((await page.evaluate(()=>window.__bridgeQA().project)).terrain.chunks.map(c=>c.heights),afterHeights,'mixed Redo restores terrain');
   await page.click('#redoBtn');
   assert.deepEqual((await page.evaluate(()=>window.__bridgeQA().project)).objects,withBlock.objects,'mixed Redo restores ordinary object');
+  await page.click('[data-tab="terrain"]');
+  assert.equal(await page.evaluate(()=>window.__bridgeQA().tool),'terrain');
 
   // Cancel pending brush with Escape must revert without altering completed stroke history.
   await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+25,y+10,{steps:4});
