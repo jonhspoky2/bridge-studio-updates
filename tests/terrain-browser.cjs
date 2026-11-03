@@ -53,7 +53,6 @@ const {chromium}=require('playwright');
   assert.equal(initial.terrainChunks,2);
   assert.ok(initial.firstDt>=0&&initial.firstDt<=.05,'first animation delta must not be negative');
   assert.ok(initial.minTerrainClearance>=-1e-6,'player must never tunnel below terrain');
-  console.log('Terrain debug spawn:',JSON.stringify(initial));
   assert.ok(Math.abs(initial.position[1]-initial.terrainY)<.1,'starts on terrain');
   await frame.evaluate(()=>window.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyD',key:'d'})));
   await frame.waitForFunction(()=>window.__bridgeDebugState().position[0]>1,{timeout:15000});
