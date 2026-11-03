@@ -30,6 +30,7 @@ const {PNG}=require('pngjs');
   });
   const page=await context.newPage();
   page.on('pageerror',e=>errors.push(e.message));
+  page.on('console',m=>{if(m.type()==='error'&&/WebGLProgram|shader compile|VALIDATE_STATUS/i.test(m.text()))errors.push(m.text());});
   await page.goto('http://127.0.0.1:41437/test/studio.html');
   await page.waitForFunction(()=>typeof window.__bridgeQA==='function',{timeout:15000});
   assert.equal(await page.locator('#terrainSculptPanel').count(),1);
@@ -123,11 +124,15 @@ const {PNG}=require('pngjs');
    await page.mouse.move(x,y);await page.mouse.down();await page.waitForTimeout(70);
    await page.mouse.move(x+11,y+7,{steps:4});await page.mouse.up();
    assert.equal(await page.evaluate(()=>window.BridgeTerrainCore.validate(window.__bridgeQA().project.terrain).chunks.length),4,'Seams after '+material);
+   if(material==='rock'||material==='dirt')await page.screenshot({path:path.join(shots,'terrain-painted-'+material+'.png')});
   }
   await page.screenshot({path:path.join(shots,'terrain-painted-mixed.png')});
   await page.screenshot({path:path.join(shots,'terrain-final.png')});
   const done=await page.evaluate(()=>window.__bridgeQA().project);
   assert.ok(done.terrain);
+  for(let channel=0;channel<4;channel++){
+   assert.ok(done.terrain.chunks.some(c=>c.weights&&c.weights.some((v,i)=>i%4===channel&&v>0)),'painted terrain retains channel '+channel);
+  }
   const saving=page.waitForEvent('download');
   await page.click('#saveProject');
   const downloaded=await saving;
@@ -167,6 +172,7 @@ const {PNG}=require('pngjs');
   exported=await fs.readFile(await (await dl).path(),'utf8');
   assert.ok(Buffer.byteLength(exported,'utf8')<=3000000,'WARPGAME maximum 3MB');
   assert.ok(exported.includes('"terrain":{"version":1'));
+  assert.ok(exported.includes('"weights":['),'paint weights must be present in exported WARPGAME HTML');
   const game=await context.newPage();game.on('pageerror',e=>errors.push(e.message));
   await game.goto('http://127.0.0.1:41437/exported.html');
   await game.waitForFunction(()=>window.__bridgeDebugState?.().terrainChunks===4,{timeout:20000});
