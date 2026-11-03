@@ -95,7 +95,7 @@
 <div id="assetPreview" hidden><div class="preview-head"><strong id="assetPreviewTitle">3D Preview</strong><button id="assetPreviewClose" class="mini">Закрыть</button></div><div id="assetPreviewCanvas"></div><p class="hint">Модель вращается в живом 3D-предпросмотре.</p></div>
 <div class="twocol" style="margin-top:8px"><button id="addTexture">+ Текстура</button><button id="createPrefab">+ Prefab</button></div><div id="textureLibrary"></div>
 <div class="twocol" style="margin:8px 0"><button id="exportLibrary">↓ Библиотека</button><button id="importLibrary">↑ Библиотека</button></div><p class="hint">Перетяни модель или Prefab прямо на 3D-сцену.</p>
-<h3>PREFABS · ШАБЛОНЫ</h3><div id="prefabLibrary"></div><button id="importPrefab" class="full">↑ Импорт .rwprefab</button><p class="hint">Выдели объекты, создай Prefab и вставляй его в сцену сколько угодно раз. Модели хранятся один раз.</p></div>
+<h3>TERRAIN · ПЕРВЫЙ СКЛОН</h3><p class="hint">Тестовая поверхность: два участка, общий шов, коллизия в Play и HTML. Создание также перемещает Spawn на начало склона. Изменение можно отменить Ctrl+Z.</p><button id="terrainDemo" class="full">＋ Создать тестовый склон</button><h3>PREFABS · ШАБЛОНЫ</h3><div id="prefabLibrary"></div><button id="importPrefab" class="full">↑ Импорт .rwprefab</button><p class="hint">Выдели объекты, создай Prefab и вставляй его в сцену сколько угодно раз. Модели хранятся один раз.</p></div>
 <div class="section"><h3>СВЕТ И ОКРУЖЕНИЕ</h3>
 <div class="light-grid"><label>Цвет неба<input type="color" data-light="sky" value="#80bbeb"></label><label>Солнце<input type="color" data-light="sunColor" value="#ffeed9"></label><label>Свет окружения<input type="color" data-light="ambientColor" value="#eaf6ff"></label><label>Туман<input type="color" data-light="fogColor" value="#96bfd8"></label></div>
 <div class="twocol"><label class="hint">Яркость солнца<input data-light="sunIntensity" type="number" min="0" max="6" step=".1" value="1.6" style="width:100%"></label><label class="hint">Окружающий свет<input data-light="ambientIntensity" type="number" min="0" max="6" step=".1" value="1.5" style="width:100%"></label></div>
@@ -147,6 +147,8 @@ var u=urls[index++],tag=document.createElement('script');tag.src=u;tag.onload=fu
 <script id="embedded-gameplay-core" type="text/plain">/* @bridge:gameplay_core.js */
 </script>
 <script id="embedded-economy-core" type="text/plain">/* @bridge:economy_core.js */
+</script>
+<script id="embedded-terrain-core" type="text/plain">/* @bridge:terrain_core.js */
 </script>
 <script id="embedded-game-runtime" type="text/plain">/* @bridge:game_runtime.js */
 </script>
