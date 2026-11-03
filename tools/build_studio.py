@@ -6,7 +6,7 @@ import re
 
 ROOT = Path(__file__).resolve().parents[1]
 INCLUDE = re.compile(r'/\* @bridge:([a-z0-9_.-]+) \*/')
-MODULES = {'gltf_loader.js', 'gameplay_core.js', 'economy_core.js', 'game_runtime.js', 'studio.js'}
+MODULES = {'gltf_loader.js', 'gameplay_core.js', 'economy_core.js', 'game_runtime.js', 'terrain_core.js', 'studio.js'}
 
 
 def build():
