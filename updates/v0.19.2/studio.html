@@ -438,15 +438,23 @@ function atlasTexture(T){
  var canvas=document.createElement('canvas');canvas.width=256;canvas.height=64;
  var ctx=canvas.getContext('2d');if(!ctx)return null;
  var img=ctx.createImageData(256,64);
- var palette=[[81,145,65],[205,175,111],[133,91,62],[130,139,145]];
- function noise(x,y,seed){var p=Math.sin(x*127.1+y*311.7+seed*19.19)*43758.5453;return p-Math.floor(p);}
+ var palette=[[49,105,46],[178,141,83],[102,68,46],[95,108,116]];
+ // Smooth periodic lattice noise: opposite tile edges always match.
+ function hash(x,y,seed){var p=Math.sin(x*127.1+y*311.7+seed*19.19)*43758.5453;return p-Math.floor(p);}
+ function tileNoise(x,y,period,seed){
+  var fx=x/64*period,fy=y/64*period,ix=Math.floor(fx),iy=Math.floor(fy),u=fx-ix,v=fy-iy;
+  u=u*u*(3-2*u);v=v*v*(3-2*v);
+  function value(dx,dy){return hash((ix+dx)%period,(iy+dy)%period,seed);}
+  var a=value(0,0)*(1-u)+value(1,0)*u,b=value(0,1)*(1-u)+value(1,1)*u;
+  return a*(1-v)+b*v;
+ }
  for(var type=0;type<4;type++)for(var y=0;y<64;y++)for(var x=0;x<64;x++){
   var i=((y*256)+(type*64+x))*4;
-  var coarse=noise(Math.floor(x/7),Math.floor(y/7),type)-.5;
-  var fine=noise(x,y,type+7)-.5;
-  var vein=type===3?Math.sin((x+y*.4)*.21)*7:0;
-  var grain=type===1?Math.sin(x*.6+y*.27)*3:0;
-  var amount=coarse*23+fine*26+vein+grain;
+  var coarse=tileNoise(x,y,5,type)-.5;
+  var fine=tileNoise(x,y,29,type+7)-.5;
+  var vein=type===3?Math.sin((x*3+y)*Math.PI*2/64)*5:0;
+  var grain=type===1?Math.sin((x*6+y*3)*Math.PI*2/64)*3:0;
+  var amount=coarse*25+fine*20+vein+grain;
   var c=palette[type];
   img.data[i]=Math.max(0,Math.min(255,c[0]+amount));
   img.data[i+1]=Math.max(0,Math.min(255,c[1]+amount*(type===0?.86:1)));
@@ -457,7 +465,7 @@ function atlasTexture(T){
  var texture=new T.CanvasTexture(canvas);
  texture.encoding=T.sRGBEncoding;
  texture.wrapS=T.ClampToEdgeWrapping;texture.wrapT=T.ClampToEdgeWrapping;
- texture.minFilter=T.LinearMipmapLinearFilter;texture.magFilter=T.LinearFilter;
+ texture.minFilter=T.LinearFilter;texture.magFilter=T.LinearFilter;texture.generateMipmaps=false;
  return texture;
 }
 function createTerrainMaterial(T,texture){
@@ -470,7 +478,7 @@ function createTerrainMaterial(T,texture){
   shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nuniform sampler2D terrainAtlas;\nvarying vec4 vTerrainWeights;\nvarying vec2 vTerrainXZ;')
    .replace('#include <map_fragment>',[
    'vec2 tileUV=fract(vTerrainXZ*0.21);',
-   'tileUV=clamp(tileUV,vec2(0.012),vec2(0.988));',
+   'tileUV=clamp(tileUV,vec2(0.047),vec2(0.953));',
    'vec3 a=texture2D(terrainAtlas,vec2((tileUV.x+0.0)/4.0,tileUV.y)).rgb;',
    'vec3 b=texture2D(terrainAtlas,vec2((tileUV.x+1.0)/4.0,tileUV.y)).rgb;',
    'vec3 c=texture2D(terrainAtlas,vec2((tileUV.x+2.0)/4.0,tileUV.y)).rgb;',
@@ -885,15 +893,23 @@ function atlasTexture(T){
  var canvas=document.createElement('canvas');canvas.width=256;canvas.height=64;
  var ctx=canvas.getContext('2d');if(!ctx)return null;
  var img=ctx.createImageData(256,64);
- var palette=[[81,145,65],[205,175,111],[133,91,62],[130,139,145]];
- function noise(x,y,seed){var p=Math.sin(x*127.1+y*311.7+seed*19.19)*43758.5453;return p-Math.floor(p);}
+ var palette=[[49,105,46],[178,141,83],[102,68,46],[95,108,116]];
+ // Smooth periodic lattice noise: opposite tile edges always match.
+ function hash(x,y,seed){var p=Math.sin(x*127.1+y*311.7+seed*19.19)*43758.5453;return p-Math.floor(p);}
+ function tileNoise(x,y,period,seed){
+  var fx=x/64*period,fy=y/64*period,ix=Math.floor(fx),iy=Math.floor(fy),u=fx-ix,v=fy-iy;
+  u=u*u*(3-2*u);v=v*v*(3-2*v);
+  function value(dx,dy){return hash((ix+dx)%period,(iy+dy)%period,seed);}
+  var a=value(0,0)*(1-u)+value(1,0)*u,b=value(0,1)*(1-u)+value(1,1)*u;
+  return a*(1-v)+b*v;
+ }
  for(var type=0;type<4;type++)for(var y=0;y<64;y++)for(var x=0;x<64;x++){
   var i=((y*256)+(type*64+x))*4;
-  var coarse=noise(Math.floor(x/7),Math.floor(y/7),type)-.5;
-  var fine=noise(x,y,type+7)-.5;
-  var vein=type===3?Math.sin((x+y*.4)*.21)*7:0;
-  var grain=type===1?Math.sin(x*.6+y*.27)*3:0;
-  var amount=coarse*23+fine*26+vein+grain;
+  var coarse=tileNoise(x,y,5,type)-.5;
+  var fine=tileNoise(x,y,29,type+7)-.5;
+  var vein=type===3?Math.sin((x*3+y)*Math.PI*2/64)*5:0;
+  var grain=type===1?Math.sin((x*6+y*3)*Math.PI*2/64)*3:0;
+  var amount=coarse*25+fine*20+vein+grain;
   var c=palette[type];
   img.data[i]=Math.max(0,Math.min(255,c[0]+amount));
   img.data[i+1]=Math.max(0,Math.min(255,c[1]+amount*(type===0?.86:1)));
@@ -904,7 +920,7 @@ function atlasTexture(T){
  var texture=new T.CanvasTexture(canvas);
  texture.encoding=T.sRGBEncoding;
  texture.wrapS=T.ClampToEdgeWrapping;texture.wrapT=T.ClampToEdgeWrapping;
- texture.minFilter=T.LinearMipmapLinearFilter;texture.magFilter=T.LinearFilter;
+ texture.minFilter=T.LinearFilter;texture.magFilter=T.LinearFilter;texture.generateMipmaps=false;
  return texture;
 }
 function createTerrainMaterial(T,texture){
@@ -917,7 +933,7 @@ function createTerrainMaterial(T,texture){
   shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nuniform sampler2D terrainAtlas;\nvarying vec4 vTerrainWeights;\nvarying vec2 vTerrainXZ;')
    .replace('#include <map_fragment>',[
    'vec2 tileUV=fract(vTerrainXZ*0.21);',
-   'tileUV=clamp(tileUV,vec2(0.012),vec2(0.988));',
+   'tileUV=clamp(tileUV,vec2(0.047),vec2(0.953));',
    'vec3 a=texture2D(terrainAtlas,vec2((tileUV.x+0.0)/4.0,tileUV.y)).rgb;',
    'vec3 b=texture2D(terrainAtlas,vec2((tileUV.x+1.0)/4.0,tileUV.y)).rgb;',
    'vec3 c=texture2D(terrainAtlas,vec2((tileUV.x+2.0)/4.0,tileUV.y)).rgb;',
