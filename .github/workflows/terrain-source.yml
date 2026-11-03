@@ -69,6 +69,7 @@ jobs:
           node tests/terrain-walk.cjs
           node tests/terrain-sculpt.cjs
           node tests/terrain-paint.cjs
+          node tests/terrain-paint-performance.cjs
           node tests/terrain-sculpt-performance.cjs
       - name: Build single-file editor from sources
         run: |
