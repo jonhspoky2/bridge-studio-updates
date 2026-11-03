@@ -7,6 +7,7 @@ var T=window.THREE, runtime={files:[],fileUrls:[]};function warn(s){console.warn
 // Shared loader inserted here by the release build.
 /* @bridge:gltf_loader.js */
 /* @bridge:terrain_core.js */
+/* @bridge:terrain_sculpt.js */
 
 /* @bridge:economy_core.js */
 
