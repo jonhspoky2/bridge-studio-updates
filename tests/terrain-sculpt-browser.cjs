@@ -114,6 +114,13 @@ const {chromium}=require('playwright');
   const frame=await (await page.locator('#playFrame').elementHandle()).contentFrame();
   await frame.waitForFunction(()=>window.__bridgeDebugState&&window.__bridgeDebugState().grounded,{timeout:10000});
   assert.equal((await frame.evaluate(()=>window.__bridgeDebugState())).terrainChunks,4);
+  // Reproduction: sprint over freshly painted / raised hills. Feet must never
+  // fall through the triangle surface, including when crossing chunk edges.
+  await frame.evaluate(()=>{window.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyD',key:'d'}));window.dispatchEvent(new KeyboardEvent('keydown',{code:'ShiftLeft',key:'Shift'}));});
+  await page.waitForTimeout(1400);
+  await frame.evaluate(()=>{window.dispatchEvent(new KeyboardEvent('keyup',{code:'KeyD',key:'d'}));window.dispatchEvent(new KeyboardEvent('keyup',{code:'ShiftLeft',key:'Shift'}));});
+  const walked=await frame.evaluate(()=>window.__bridgeDebugState());
+  assert.ok(walked.minTerrainClearance===null||walked.minTerrainClearance>=-1e-5,'no tunneling on sculpted terrain in Play');
   await page.click('#btnStop');
   assert.deepEqual(await page.evaluate(()=>window.__bridgeQA().project),beforePlay,'Play and Stop must not mutate scene');
   const dl=page.waitForEvent('download');
