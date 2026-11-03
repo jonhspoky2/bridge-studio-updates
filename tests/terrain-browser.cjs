@@ -29,7 +29,7 @@ const {chromium}=require('playwright');
   await page.waitForFunction(()=>typeof window.__bridgeQA==='function');
   const start=await page.evaluate(()=>window.__bridgeQA().project);
   assert.equal(start.terrain,undefined);
-  await page.click('#terrainDemo');
+  await page.click('[data-tab="terrain"]');await page.click('#terrainDemo');
   const before=await page.evaluate(()=>window.__bridgeQA().project);
   assert.equal(before.terrain.chunks.length,2);
   assert.ok(before.objects.some(o=>o.type==='spawn'&&o.position[0]===-8));
