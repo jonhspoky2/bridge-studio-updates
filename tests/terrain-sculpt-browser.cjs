@@ -6,6 +6,7 @@ const path=require('node:path');
 const os=require('node:os');
 const {execFileSync}=require('node:child_process');
 const {chromium}=require('playwright');
+const {PNG}=require('pngjs');
 (async()=>{
  const root=path.join(__dirname,'..'),built=path.join(os.tmpdir(),'bridge-v0190-sculpt.html');
  execFileSync(process.env.PYTHON||'python3',[path.join(root,'tools/build_studio.py'),'--output',built]);
@@ -87,6 +88,43 @@ const {chromium}=require('playwright');
    await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+15,y,{steps:5});await page.mouse.up();
    assert.equal(await page.evaluate(()=>window.__bridgeQA().sculpting),false);
   }
+  // Paint mode: actual WebGL pixels, integer weights, Undo/Redo and 4-way seams.
+  await page.click('[data-terrain-mode="paint"]');
+  assert.ok(await page.locator('#terrainPaintControls').isVisible(),'Paint palette is visible');
+  await page.click('[data-terrain-material="sand"]');
+  await page.locator('#terrainRadius').evaluate(el=>{el.value='6';el.dispatchEvent(new Event('input',{bubbles:true}));});
+  await page.locator('#terrainStrength').evaluate(el=>{el.value='12';el.dispatchEvent(new Event('input',{bubbles:true}));});
+  await page.waitForTimeout(120);
+  const paintBeforePixels=PNG.sync.read(await canvas.screenshot());
+  const paintBase=await page.evaluate(()=>window.__bridgeQA().project);
+  await page.mouse.move(x,y);await page.mouse.down();
+  for(let i=0;i<13;i++){await page.waitForTimeout(36);await page.mouse.move(x+(i+1)*2,y+Math.sin(i*.21)*3);}
+  await page.mouse.up();
+  await page.waitForTimeout(120);
+  const painted=await page.evaluate(()=>window.__bridgeQA().project);
+  assert.ok(painted.terrain.chunks.some(c=>Array.isArray(c.weights)&&c.weights.some((v,i)=>i%4===1&&v>0)),'Sand weights painted');
+  assert.deepEqual(painted.terrain.chunks.map(c=>c.heights),paintBase.terrain.chunks.map(c=>c.heights),'Paint leaves heights untouched');
+  assert.equal(await page.evaluate(()=>window.BridgeTerrainCore.validate(window.__bridgeQA().project.terrain).chunks.length),4,'Paint seams valid');
+  const paintAfterPixels=PNG.sync.read(await canvas.screenshot());
+  assert.equal(paintBeforePixels.width,paintAfterPixels.width);
+  let changedPixels=0;
+  for(let i=0;i<paintAfterPixels.data.length;i+=4){
+   if(Math.abs(paintAfterPixels.data[i]-paintBeforePixels.data[i])+Math.abs(paintAfterPixels.data[i+1]-paintBeforePixels.data[i+1])+Math.abs(paintAfterPixels.data[i+2]-paintBeforePixels.data[i+2])>45)changedPixels++;
+  }
+  assert.ok(changedPixels>200,'Paint must visibly change WebGL pixels, got '+changedPixels);
+  await page.screenshot({path:path.join(shots,'terrain-painted-sand.png')});
+  await page.click('#undoBtn');
+  assert.deepEqual((await page.evaluate(()=>window.__bridgeQA().project)).terrain,paintBase.terrain,'Paint Undo restores entire project incl. old missing weight fields');
+  await page.click('#redoBtn');
+  assert.deepEqual((await page.evaluate(()=>window.__bridgeQA().project)).terrain,painted.terrain,'Paint Redo restores weights');
+  // Rock, dirt, grass and sand can all be selected and painted on the same saved map.
+  for(const material of ['rock','dirt','grass']){
+   await page.click('[data-terrain-material="'+material+'"]');
+   await page.mouse.move(x,y);await page.mouse.down();await page.waitForTimeout(70);
+   await page.mouse.move(x+11,y+7,{steps:4});await page.mouse.up();
+   assert.equal(await page.evaluate(()=>window.BridgeTerrainCore.validate(window.__bridgeQA().project.terrain).chunks.length),4,'Seams after '+material);
+  }
+  await page.screenshot({path:path.join(shots,'terrain-painted-mixed.png')});
   await page.screenshot({path:path.join(shots,'terrain-final.png')});
   const done=await page.evaluate(()=>window.__bridgeQA().project);
   assert.ok(done.terrain);
