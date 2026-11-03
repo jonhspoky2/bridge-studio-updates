@@ -118,9 +118,9 @@ function refreshTerrain(){hideTerrainCursor();terrainMeshes.forEach(function(mes
 function addDemoTerrain(){if(project.terrain&&project.terrain.chunks&&project.terrain.chunks.length){status('Terrain уже создан; сохрани проект перед заменой рельефа.',true);return;}remember();project.terrain=window.BridgeTerrainCore.demoSlope();var s=project.objects.find(function(o){return o.type==='spawn';});if(s){var y=window.BridgeTerrainCore.sampleHeight(project.terrain,-8,5);s.position=[-8,y+.25,5];}refreshScene();refreshLists();setDirty(true);status('Создан тестовый склон из 2 участков. Проверяй Play, сохранение и экспорт.');}
 
 function terrainOptions(){return {mode:terrainBrush,radius:Number($('terrainRadius').value),strength:Number($('terrainStrength').value),hardness:Number($('terrainHardness').value)};}
-function refreshTerrainChunks(chunks){
+function refreshTerrainChunks(chunks,precise){
  if(!project.terrain||!chunks||!chunks.length)return;
- window.BridgeTerrainSculpt.refreshMeshes(T,project.terrain,terrainMeshes,chunks,terrainStroke&&terrainStroke.stroke.nodes);
+ window.BridgeTerrainSculpt.refreshMeshes(T,project.terrain,terrainMeshes,chunks,terrainStroke&&terrainStroke.stroke.nodes,!!precise);
 }
 function addFlatTerrain(){
  if(project.terrain&&project.terrain.chunks&&project.terrain.chunks.length){status('Terrain уже существует. Сохрани проект и создай новый для другой сетки.',true);return;}
@@ -175,7 +175,7 @@ function startTerrainStroke(e,point){
   var stroke=window.BridgeTerrainSculpt.begin(project.terrain,terrainOptions(),point.x,point.z);
   var result=window.BridgeTerrainSculpt.dab(stroke,point.x,point.z,.033);
   terrainStroke={stroke:stroke,x:point.x,z:point.z,lastTime:e.timeStamp||performance.now(),pointerId:e.pointerId};
-  refreshTerrainChunks(result.chunks);if(result.vertices)setDirty(true);
+  refreshTerrainChunks(result.chunks,true);if(result.vertices)setDirty(true);
   showTerrainCursor(point.x,point.z);
  }catch(error){status('Кисть: '+error.message,true);}
 }
@@ -185,7 +185,7 @@ function moveTerrainStroke(e,point){
   var t=e.timeStamp||performance.now(),dt=Math.max(.005,Math.min(.08,(t-terrainStroke.lastTime)/1000||.016));
   var result=window.BridgeTerrainSculpt.applyPath(terrainStroke.stroke,terrainStroke.x,terrainStroke.z,point.x,point.z,dt);
   terrainStroke.x=point.x;terrainStroke.z=point.z;terrainStroke.lastTime=t;
-  refreshTerrainChunks(result.chunks);if(result.vertices)setDirty(true);
+  refreshTerrainChunks(result.chunks,true);if(result.vertices)setDirty(true);
   showTerrainCursor(point.x,point.z);
  }catch(error){status('Кисть: '+error.message,true);endTerrainStroke(true);}
 }
