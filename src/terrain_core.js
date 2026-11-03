@@ -43,7 +43,7 @@ function createMeshes(T,t){
  if(!t)return [];
  validate(t);
  return t.chunks.map(function(c,n){
-  var side=c.segments+1,positions=[],normals=[],indices=[],eps=c.step*.25;
+  var side=c.segments+1,positions=[],normals=[],indices=[],eps=c.step;
   for(var j=0;j<side;j++)for(var i=0;i<side;i++){
    var x=c.x+i*c.step,z=c.z+j*c.step,h=c.heights[j*side+i];
    positions.push(x,h,z);
