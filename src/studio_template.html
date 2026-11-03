@@ -76,6 +76,15 @@
 #patchSaveMessage{color:#c5d9e4;line-height:1.5;margin:0 0 18px}
 .patch-save-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
 </style><meta name="referrer" content="no-referrer"></head><body>
+<style>
+#terrainSculptPanel {border-top:1px solid var(--line);margin-top:10px;padding-top:10px}
+#terrainSculptPanel select {width:100%;display:block;margin-top:4px}
+.terrain-slider {display:block;margin:10px 0 6px}
+.terrain-slider input {display:block;width:100%;margin:6px 0}
+.terrain-slider output {float:right;color:var(--accent)}
+.terrain-brush.selected {background:#216477;border-color:#58d9e2;color:#fff}
+#terrainBrushHint {min-height:24px}
+</style>
 <header><div class="brand"><div class="logo">R↗W</div><div><b>BRIDGE STUDIO</b><small>GAME MAKER 0.18.5</small></div></div><input id="projectName" value="Coin Rush" title="Название проекта"><span class="sep"></span><button id="newProject" title="Новый проект">Новый</button><button id="loadProject">Открыть</button><button id="saveProject" title="Скачать проект .rwscene">Сохранить ↓</button><button id="saveNative" title="Сохранить проект в выбранный файл (при поддержке браузера)">В файл…</button><span id="dirtyMark" title="Изменения с момента последнего ручного сохранения">✓ Сохранено</span><button id="btnCheck" title="Проверить ошибки, модели и скрипты">✓ Проверить</button><button id="restoreDraft" title="Открыть историю резервных копий">⟲ Копии</button><div class="spacer"></div><button id="btnUpdates" class="mini hidden" title="Патчи Bridge Studio">↻ Патчи</button><button id="btnStop" class="hidden">■ Стоп</button><button id="btnPlay" class="play">▶ PLAY</button><select id="exportProfile" title="Профиль экспорта" style="width:145px"><option value="warpgame">WARPGAME · 3 МБ</option><option value="standalone">Standalone · CDN</option><option value="offline">Standalone · OFFLINE</option></select><button id="btnBuild" class="main">↓ BUILD HTML</button></header>
 
 <div id="patchNotesBackdrop" hidden>
@@ -95,7 +104,22 @@
 <div id="assetPreview" hidden><div class="preview-head"><strong id="assetPreviewTitle">3D Preview</strong><button id="assetPreviewClose" class="mini">Закрыть</button></div><div id="assetPreviewCanvas"></div><p class="hint">Модель вращается в живом 3D-предпросмотре.</p></div>
 <div class="twocol" style="margin-top:8px"><button id="addTexture">+ Текстура</button><button id="createPrefab">+ Prefab</button></div><div id="textureLibrary"></div>
 <div class="twocol" style="margin:8px 0"><button id="exportLibrary">↓ Библиотека</button><button id="importLibrary">↑ Библиотека</button></div><p class="hint">Перетяни модель или Prefab прямо на 3D-сцену.</p>
-<h3>TERRAIN · ПЕРВЫЙ СКЛОН</h3><p class="hint">Тестовая поверхность: два участка, общий шов, коллизия в Play и HTML. Создание также перемещает Spawn на начало склона. Изменение можно отменить Ctrl+Z.</p><button id="terrainDemo" class="full">＋ Создать тестовый склон</button><h3>PREFABS · ШАБЛОНЫ</h3><div id="prefabLibrary"></div><button id="importPrefab" class="full">↑ Импорт .rwprefab</button><p class="hint">Выдели объекты, создай Prefab и вставляй его в сцену сколько угодно раз. Модели хранятся один раз.</p></div>
+<h3>TERRAIN · ПЕРВЫЙ СКЛОН</h3><p class="hint">Тестовая поверхность: два участка, общий шов, коллизия в Play и HTML. Создание также перемещает Spawn на начало склона. Изменение можно отменить Ctrl+Z.</p><button id="terrainDemo" class="full">＋ Создать тестовый склон</button><div class="section" id="terrainSculptPanel"><h3>TERRAIN SCULPT · РЕЛЬЕФ</h3>
+<p class="hint">Создай плоскую карту или используй тестовый склон выше. Включи режим Terrain в верхней панели.</p>
+<div class="twocol"><label class="hint">Чанков X<select id="terrainCols"><option value="1">1</option><option value="2" selected>2</option><option value="4">4</option></select></label><label class="hint">Чанков Z<select id="terrainRows"><option value="1">1</option><option value="2" selected>2</option><option value="4">4</option></select></label></div>
+<button id="terrainFlat" class="full">＋ Создать плоский Terrain</button>
+<div id="terrainSculptControls">
+<div class="twocol" style="margin:8px 0">
+<button type="button" data-terrain-brush="raise" class="terrain-brush selected">↑ Raise</button>
+<button type="button" data-terrain-brush="lower" class="terrain-brush">↓ Lower</button>
+<button type="button" data-terrain-brush="smooth" class="terrain-brush">∿ Smooth</button>
+<button type="button" data-terrain-brush="flatten" class="terrain-brush">═ Flatten</button>
+</div>
+<label class="hint terrain-slider">Радиус <output id="terrainRadiusLabel">3.0</output><input type="range" id="terrainRadius" min="0.5" max="16" step="0.5" value="3"></label>
+<label class="hint terrain-slider">Сила <output id="terrainStrengthLabel">5.0</output><input type="range" id="terrainStrength" min="0.1" max="12" step="0.1" value="5"></label>
+<label class="hint terrain-slider">Жёсткость <output id="terrainHardnessLabel">0.35</output><input type="range" id="terrainHardness" min="0" max="1" step="0.05" value="0.35"></label>
+<p id="terrainBrushHint" class="hint">Terrain: левую кнопку держи для мазка; средняя/правая — камера. Escape — отмена мазка.</p>
+</div></div><h3>PREFABS · ШАБЛОНЫ</h3><div id="prefabLibrary"></div><button id="importPrefab" class="full">↑ Импорт .rwprefab</button><p class="hint">Выдели объекты, создай Prefab и вставляй его в сцену сколько угодно раз. Модели хранятся один раз.</p></div>
 <div class="section"><h3>СВЕТ И ОКРУЖЕНИЕ</h3>
 <div class="light-grid"><label>Цвет неба<input type="color" data-light="sky" value="#80bbeb"></label><label>Солнце<input type="color" data-light="sunColor" value="#ffeed9"></label><label>Свет окружения<input type="color" data-light="ambientColor" value="#eaf6ff"></label><label>Туман<input type="color" data-light="fogColor" value="#96bfd8"></label></div>
 <div class="twocol"><label class="hint">Яркость солнца<input data-light="sunIntensity" type="number" min="0" max="6" step=".1" value="1.6" style="width:100%"></label><label class="hint">Окружающий свет<input data-light="ambientIntensity" type="number" min="0" max="6" step=".1" value="1.5" style="width:100%"></label></div>
@@ -119,6 +143,7 @@
 <button class="tool selected" data-tool="move" title="Перемещение по осям (G)">↔ <span>Двигать</span></button>
 <button class="tool" data-tool="rotate" title="Поворот мышью (R)">⟳ <span>Вращать</span></button>
 <button class="tool" data-tool="scale" title="Масштаб мышью (S)">▣ <span>Размер</span></button>
+<button id="terrainTool" class="tool" data-tool="terrain" title="Рисование ландшафта">◯ <span>Terrain</span></button>
 <button id="undoBtn" class="tool" title="Отменить (Ctrl+Z)">↶ <span>Назад</span></button><button id="redoBtn" class="tool" title="Повторить (Ctrl+Y)">↷ <span>Вперёд</span></button><label class="snap"><input id="snapEnabled" type="checkbox" checked> Шаг 0.25</label><label class="snap"><input id="gridEnabled" type="checkbox" checked> Сетка</label><button id="fitScene" class="tool" title="Вся сцена (Home)">▧ <span>Вся сцена</span></button><button id="focusSelection" class="tool" title="Сфокусировать камеру на объекте (F)">◎ <span>Фокус</span></button>
 </div><div id="renderError" hidden></div><div id="renderState" class="render-state">3D запускается…</div><div id="logicCanvas" class="hidden" aria-label="Редактор графов игровой логики">
 <div id="logicCanvasHeader"><strong id="logicActiveTitle">Визуальная логика</strong><span id="logicConnectionHint">Выберите блок и соедините выход с входом</span><button id="logicExit">3D-сцена</button></div>
