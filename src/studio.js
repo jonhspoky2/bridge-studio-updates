@@ -115,8 +115,20 @@ mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);editorScene.add(g);mesh
 if(d.type==='glb'&&getAsset(d)){try{var bytes=bytesFromB64(getAsset(d)),decoded=decodeGlb(bytes);parseData(decoded.json,decoded.bin).then(function(r){if(meshes[d.id]!==g){disposeVisual(r.object);return;}decorateGlb(r.object,d,project);g.add(r.object);mesh.visible=false;refreshSelection();}).catch(function(e){status('Модель '+d.name+': '+e.message,true);});}catch(e){status(e.message,true);}}
 return g;}
 function refreshTerrain(){hideTerrainCursor();terrainMeshes.forEach(function(mesh){editorScene.remove(mesh);disposeVisual(mesh);});terrainMeshes=[];if(project.terrain){try{window.BridgeTerrainCore.validate(project.terrain);terrainMeshes=window.BridgeTerrainCore.createMeshes(T,project.terrain);terrainMeshes.forEach(function(mesh){editorScene.add(mesh);});}catch(e){status('Terrain: '+e.message,true);}}}
-function addDemoTerrain(){if(project.terrain&&project.terrain.chunks&&project.terrain.chunks.length){status('Terrain уже создан; сохрани проект перед заменой рельефа.',true);return;}remember();project.terrain=window.BridgeTerrainCore.demoSlope();var s=project.objects.find(function(o){return o.type==='spawn';});if(s){var y=window.BridgeTerrainCore.sampleHeight(project.terrain,-8,5);s.position=[-8,y+.25,5];}refreshScene();refreshLists();setDirty(true);status('Создан тестовый склон из 2 участков. Проверяй Play, сохранение и экспорт.');}
+function addDemoTerrain(){if(project.terrain&&project.terrain.chunks&&project.terrain.chunks.length){status('Terrain уже создан; сохрани проект перед заменой рельефа.',true);return;}remember();project.terrain=window.BridgeTerrainCore.demoSlope();removeStarterGroundForTerrain();var s=project.objects.find(function(o){return o.type==='spawn';});if(s){var y=window.BridgeTerrainCore.sampleHeight(project.terrain,-8,5);s.position=[-8,y+.25,5];}refreshScene();refreshLists();fitScene();setTool('terrain');setDirty(true);status('Создан тестовый склон из 2 участков. Проверяй Play, сохранение и экспорт.');}
 
+function removeStarterGroundForTerrain(){
+ var starter=project.objects.find(function(o){
+  if(o.type!=='ground'||!Array.isArray(o.position)||!Array.isArray(o.scale)||o.action!=='none')return false;
+  var coinRush=o.id==='floor'&&o.name==='Главная платформа'&&Math.abs(o.position[1]+.4)<1e-7&&o.scale[0]===16&&o.scale[1]===.8&&o.scale[2]===20;
+  var blankScene=project.name==='Новая игра'&&o.name==='Земля'&&Math.abs(o.position[1]+.5)<1e-7&&o.scale[0]===16&&o.scale[1]===1&&o.scale[2]===16;
+  return coinRush||blankScene;
+ });
+ if(!starter)return false;
+ project.objects=project.objects.filter(function(o){return o!==starter;});
+ if(selectedId===starter.id){selectedId=null;selectedIds=[];}
+ return true;
+}
 function terrainOptions(){return {mode:terrainBrush,radius:Number($('terrainRadius').value),strength:Number($('terrainStrength').value),hardness:Number($('terrainHardness').value)};}
 function refreshTerrainChunks(chunks,precise){
  if(!project.terrain||!chunks||!chunks.length)return;
@@ -128,14 +140,7 @@ function addFlatTerrain(){
   var cols=Number($('terrainCols').value),rows=Number($('terrainRows').value);
   var fresh=window.BridgeTerrainSculpt.createFlat(cols,rows,16,1);
   remember();project.terrain=fresh;
-  // Remove ONLY the recognized built-in starter floor; never delete custom platforms.
-  var starter=project.objects.find(function(o){
-   if(o.type!=='ground'||!Array.isArray(o.position)||!Array.isArray(o.scale)||o.action!=='none')return false;
-   var coinRush=o.id==='floor'&&o.name==='Главная платформа'&&Math.abs(o.position[1]+.4)<1e-7&&o.scale[0]===16&&o.scale[1]===.8&&o.scale[2]===20;
-   var blankScene=project.name==='Новая игра'&&o.name==='Земля'&&Math.abs(o.position[1]+.5)<1e-7&&o.scale[0]===16&&o.scale[1]===1&&o.scale[2]===16;
-   return coinRush||blankScene;
-  });
-  if(starter){project.objects=project.objects.filter(function(o){return o!==starter;});if(selectedId===starter.id){selectedId=null;selectedIds=[];}}
+  removeStarterGroundForTerrain();
   refreshScene();refreshLists();fitScene();setTool('terrain');
   status('Создан Terrain '+cols+'×'+rows+' участков. Рисуй кистью в 3D-окне.');
  }catch(e){status(e.message,true);}
@@ -628,7 +633,7 @@ if(editorCamActive&&document.activeElement===renderer.domElement&&!e.ctrlKey&&!e
 if(e.ctrlKey&&e.key.toLowerCase()==='s'){e.preventDefault();save();return;}if(/input|textarea/i.test((document.activeElement||{}).tagName||''))return;if(e.ctrlKey&&e.key.toLowerCase()==='a'&&activeTab==='world'){e.preventDefault();setSelectedIds(project.objects.map(function(o){return o.id;}),selectedId);return;}if(e.ctrlKey&&e.key.toLowerCase()==='z'){e.preventDefault();if(e.shiftKey)historyForward();else historyBack();return;}if(e.ctrlKey&&e.key.toLowerCase()==='y'){e.preventDefault();historyForward();return;}if(e.key.toLowerCase()==='g'){setTool('move');return;}if(e.key.toLowerCase()==='r'){setTool('rotate');return;}if(e.key.toLowerCase()==='s'&&!e.ctrlKey){setTool('scale');return;}if(e.key.toLowerCase()==='f'){focusSelected();return;}if(e.key==='Home'){fitScene();return;}if(e.key==='Escape'&&terrainStroke){e.preventDefault();endTerrainStroke(true);return;}if(e.key==='Escape'){editorCamActive=false;editorKeys={};if(renderer)renderer.domElement.blur();select('world',null);return;}
 if(selectedKind==='world'&&selectedIds.length&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','PageUp','PageDown'].indexOf(e.key)>=0){e.preventDefault();var step=e.shiftKey?1:($('snapEnabled').checked?.25:.1);remember();selectedObjects().forEach(function(chosen){if(e.key==='ArrowLeft')chosen.position[0]-=step;else if(e.key==='ArrowRight')chosen.position[0]+=step;else if(e.key==='ArrowUp')chosen.position[2]-=step;else if(e.key==='ArrowDown')chosen.position[2]+=step;else if(e.key==='PageUp')chosen.position[1]+=step;else if(e.key==='PageDown')chosen.position[1]-=step;var m=meshes[chosen.id];if(m)m.position.fromArray(chosen.position);});refreshSelection();updateGizmo();refreshInspector();status('Перемещено объектов: '+selectedIds.length);return;}
 if(e.key==='Delete'){deleteSelected();}if(e.ctrlKey&&e.key.toLowerCase()==='s'){e.preventDefault();save();}if(e.ctrlKey&&e.key.toLowerCase()==='d'){e.preventDefault();duplicateSelected();}});}
-initRenderer();project=normalizeDoc(initialProject());$('projectName').value=project.name;attach();attachGameplayEditor();syncGameSettings();refreshAssetBrowser();refreshLightingControls();if(editorScene)refreshScene();select('world',project.objects.some(function(o){return o.id==='demo_rover';})?'demo_rover':project.objects[0].id);lastExplicitSave=sceneData();setDirty(false);status('Bridge Studio v0.18.5 готов к работе.');setInterval(writeDraft,15000);document.addEventListener('visibilitychange',function(){if(document.hidden)writeDraft();});window.__bridgeQA=function(){return {project:clone(project),selectedIds:selectedIds.slice(),dirty:dirty,tool:toolMode,sculpting:!!terrainStroke};};window.__bridgeGameplayQA={getGraph:function(){return clone(graphSelected());},emitAvailable:!!window.BridgeGameplayCore,createGameplayDemo:createGameplayDemo};window.__bridgeV13={exportLibrary:exportLibrary,importLibrary:importLibrary,normalizeDoc:normalizeDoc,exportGameDoc:exportGameDoc,createPrefab:createPrefab,instantiatePrefab:instantiatePrefab,addAssetInstance:addAssetInstance,importPrefabFile:importPrefabFile,previewAsset:previewAsset};
+initRenderer();project=normalizeDoc(initialProject());$('projectName').value=project.name;attach();attachGameplayEditor();syncGameSettings();refreshAssetBrowser();refreshLightingControls();if(editorScene)refreshScene();select('world',project.objects.some(function(o){return o.id==='demo_rover';})?'demo_rover':project.objects[0].id);lastExplicitSave=sceneData();setDirty(false);status('Bridge Studio v0.19.0 DEV · Terrain Sculpt готов к тестированию.');setInterval(writeDraft,15000);document.addEventListener('visibilitychange',function(){if(document.hidden)writeDraft();});window.__bridgeQA=function(){return {project:clone(project),selectedIds:selectedIds.slice(),dirty:dirty,tool:toolMode,sculpting:!!terrainStroke};};window.__bridgeGameplayQA={getGraph:function(){return clone(graphSelected());},emitAvailable:!!window.BridgeGameplayCore,createGameplayDemo:createGameplayDemo};window.__bridgeV13={exportLibrary:exportLibrary,importLibrary:importLibrary,normalizeDoc:normalizeDoc,exportGameDoc:exportGameDoc,createPrefab:createPrefab,instantiatePrefab:instantiatePrefab,addAssetInstance:addAssetInstance,importPrefabFile:importPrefabFile,previewAsset:previewAsset};
 // v0.17.2: signed live-patch UI. Works only through the dedicated local Windows host.
 
 function attachLiveUpdates(){
