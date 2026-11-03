@@ -71,4 +71,13 @@ jobs:
           npm install --no-save --no-package-lock playwright@1.56.1 three@0.128.0
           npx playwright install --with-deps chromium
       - name: Terrain browser integration (SwiftShader WebGL)
-        run: node tests/terrain-browser.cjs
+        run: |
+          node tests/terrain-browser.cjs
+          node tests/terrain-sculpt-browser.cjs
+      - name: Upload Terrain Sculpt visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terrain-v0190-screenshots
+          path: tests/screenshots/*.png
+          if-no-files-found: ignore
