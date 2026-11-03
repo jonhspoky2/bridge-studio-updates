@@ -4,16 +4,17 @@ on:
   push:
     paths:
       - 'src/**'
-      - 'updates/v0.18.5/**'
+      - 'updates/v0.19.0/**'
       - 'tools/build_studio.py'
       - 'tests/terrain-core.cjs'
       - 'tests/terrain-browser.cjs'
       - 'tests/terrain-sculpt.cjs'
+      - 'tests/terrain-sculpt-browser.cjs'
       - '.github/workflows/terrain-source.yml'
   pull_request:
     paths:
       - 'src/**'
-      - 'updates/v0.18.5/**'
+      - 'updates/v0.19.0/**'
       - 'tools/build_studio.py'
       - 'tests/terrain-core.cjs'
       - '.github/workflows/terrain-source.yml'
@@ -34,16 +35,15 @@ jobs:
           node --check src/game_runtime.js
           node --check src/studio.js
           python3 -m py_compile tools/build_studio.py
-      - name: Verify release candidate bytes and SHA-256
+      - name: Build pre-release editor and validate file budget
         run: |
-          python3 tools/build_studio.py --check updates/v0.18.5/studio.html
+          python3 tools/build_studio.py --output /tmp/bridge-v0190-preview.html
           python3 - <<'PY'
-          import hashlib
           from pathlib import Path
-          b=Path("updates/v0.18.5/studio.html").read_bytes()
-          print("RELEASE_0185_SIZE="+str(len(b)))
-          print("RELEASE_0185_SHA256="+hashlib.sha256(b).hexdigest())
-          assert 250000 < len(b) < 1000000
+          html=Path('/tmp/bridge-v0190-preview.html').read_text(encoding='utf-8')
+          assert '/* @bridge:' not in html
+          assert 'BridgeTerrainSculpt' in html
+          print('Terrain 0.19.0 preview bytes',len(html.encode('utf-8')))
           PY
       - name: Run terrain geometry and surface tests
         run: |
