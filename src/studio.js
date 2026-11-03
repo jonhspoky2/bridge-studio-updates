@@ -120,7 +120,7 @@ function addDemoTerrain(){if(project.terrain&&project.terrain.chunks&&project.te
 function terrainOptions(){return {mode:terrainBrush,radius:Number($('terrainRadius').value),strength:Number($('terrainStrength').value),hardness:Number($('terrainHardness').value)};}
 function refreshTerrainChunks(chunks){
  if(!project.terrain||!chunks||!chunks.length)return;
- window.BridgeTerrainSculpt.refreshMeshes(T,project.terrain,terrainMeshes,chunks);
+ window.BridgeTerrainSculpt.refreshMeshes(T,project.terrain,terrainMeshes,chunks,terrainStroke&&terrainStroke.stroke.nodes);
 }
 function addFlatTerrain(){
  if(project.terrain&&project.terrain.chunks&&project.terrain.chunks.length){status('Terrain уже существует. Сохрани проект и создай новый для другой сетки.',true);return;}
