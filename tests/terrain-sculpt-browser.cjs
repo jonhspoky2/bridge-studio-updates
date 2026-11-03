@@ -98,6 +98,16 @@ const {chromium}=require('playwright');
   await page.locator('#projectInput').setInputFiles({name:'terrain-0190.rwscene',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(saved))});
   await page.waitForFunction(()=>window.__bridgeQA().project.terrain?.chunks?.length===4);
   assert.deepEqual((await page.evaluate(()=>window.__bridgeQA().project)).terrain,done.terrain);
+  // After loading a clean project, cancel must restore both heights and the clean indicator.
+  const cleanBefore=await page.evaluate(()=>window.__bridgeQA());
+  assert.equal(cleanBefore.dirty,false,'loaded scene is initially clean');
+  await page.click('[data-tab="terrain"]');
+  await page.mouse.move(x,y);await page.mouse.down();
+  await page.mouse.move(x+13,y+5,{steps:4});
+  await page.keyboard.press('Escape');await page.mouse.up();
+  const cleanAfter=await page.evaluate(()=>window.__bridgeQA());
+  assert.deepEqual(cleanAfter.project,cleanBefore.project,'cancel restores all data on clean project');
+  assert.equal(cleanAfter.dirty,false,'cancel must not mark saved project dirty');
   const beforePlay=await page.evaluate(()=>window.__bridgeQA().project);
   await page.click('#btnPlay');
   await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('3D-кадр'),{timeout:20000});
