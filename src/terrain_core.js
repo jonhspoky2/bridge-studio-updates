@@ -11,6 +11,14 @@ function validate(t){
  t.chunks.forEach(function(c,n){
   if(!c||!finite(c.x)||!finite(c.z)||!Number.isInteger(c.segments)||c.segments<2||c.segments>64||!finite(c.step)||c.step<=0||c.step>16)throw Error('Terrain: invalid chunk '+n);
   if(!Array.isArray(c.heights)||c.heights.length!==(c.segments+1)*(c.segments+1)||c.heights.some(function(h){return !finite(h)||Math.abs(h)>1000;}))throw Error('Terrain: invalid heights '+n);
+  if(c.weights!==undefined){
+   if(!Array.isArray(c.weights)||c.weights.length!==c.heights.length*4)throw Error('Terrain: invalid paint weights '+n);
+   for(var w=0;w<c.weights.length;w+=4){
+    var sum=0;
+    for(var k=0;k<4;k++){var v=c.weights[w+k];if(!Number.isInteger(v)||v<0||v>255)throw Error('Terrain: invalid paint channel '+n);sum+=v;}
+    if(sum!==255)throw Error('Terrain: paint weights must sum to 255');
+   }
+  }
   count+=c.heights.length;if(count>100000)throw Error('Terrain: vertex budget exceeded');
   if(first&&(!near(first.step,c.step)||first.segments!==c.segments))throw Error('Terrain: mixed resolutions unsupported in v1');
   first=first||c;
@@ -21,9 +29,17 @@ function validate(t){
   var a=t.chunks[i],b=t.chunks[j],dx=b.x-a.x,dz=b.z-a.z;
   if(Math.abs(dx)<span-EPS&&Math.abs(dz)<span-EPS)throw Error('Terrain: overlapping chunks');
   if(near(Math.abs(dx),span)&&near(dz,0))
-   for(var k=0;k<side;k++)if(!near(a.heights[k*side+(dx>0?side-1:0)],b.heights[k*side+(dx>0?0:side-1)]))throw Error('Terrain: X seam mismatch');
+   for(var k=0;k<side;k++){
+    var ai=k*side+(dx>0?side-1:0),bi=k*side+(dx>0?0:side-1);
+    if(!near(a.heights[ai],b.heights[bi]))throw Error('Terrain: X seam mismatch');
+    for(var v=0;v<4;v++)if(weightAt(a,ai,v)!==weightAt(b,bi,v))throw Error('Terrain: X paint seam mismatch');
+   }
   if(near(Math.abs(dz),span)&&near(dx,0))
-   for(var p=0;p<side;p++)if(!near(a.heights[(dz>0?side-1:0)*side+p],b.heights[(dz>0?0:side-1)*side+p]))throw Error('Terrain: Z seam mismatch');
+   for(var p=0;p<side;p++){
+    var ai=(dz>0?side-1:0)*side+p,bi=(dz>0?0:side-1)*side+p;
+    if(!near(a.heights[ai],b.heights[bi]))throw Error('Terrain: Z seam mismatch');
+    for(var v=0;v<4;v++)if(weightAt(a,ai,v)!==weightAt(b,bi,v))throw Error('Terrain: Z paint seam mismatch');
+   }
  }
  return t;
 }
@@ -75,14 +91,68 @@ function walkHeightfield(t,x,z,y,dx,dz,followingTerrain,blocked){
  }
  return {x:x,z:z,y:y};
 }
+
+function weightAt(chunk,index,channel){return chunk.weights?chunk.weights[index*4+channel]:(channel===0?255:0);}
+function atlasTexture(T){
+ if(typeof document==='undefined'||!T.CanvasTexture)return null;
+ var canvas=document.createElement('canvas');canvas.width=256;canvas.height=64;
+ var ctx=canvas.getContext('2d');if(!ctx)return null;
+ var img=ctx.createImageData(256,64);
+ var palette=[[81,145,65],[205,175,111],[133,91,62],[130,139,145]];
+ function noise(x,y,seed){var p=Math.sin(x*127.1+y*311.7+seed*19.19)*43758.5453;return p-Math.floor(p);}
+ for(var type=0;type<4;type++)for(var y=0;y<64;y++)for(var x=0;x<64;x++){
+  var i=((y*256)+(type*64+x))*4;
+  var coarse=noise(Math.floor(x/7),Math.floor(y/7),type)-.5;
+  var fine=noise(x,y,type+7)-.5;
+  var vein=type===3?Math.sin((x+y*.4)*.21)*7:0;
+  var grain=type===1?Math.sin(x*.6+y*.27)*3:0;
+  var amount=coarse*23+fine*26+vein+grain;
+  var c=palette[type];
+  img.data[i]=Math.max(0,Math.min(255,c[0]+amount));
+  img.data[i+1]=Math.max(0,Math.min(255,c[1]+amount*(type===0?.86:1)));
+  img.data[i+2]=Math.max(0,Math.min(255,c[2]+amount*(type===0?.68:1.15)));
+  img.data[i+3]=255;
+ }
+ ctx.putImageData(img,0,0);
+ var texture=new T.CanvasTexture(canvas);
+ texture.encoding=T.sRGBEncoding;
+ texture.wrapS=T.ClampToEdgeWrapping;texture.wrapT=T.ClampToEdgeWrapping;
+ texture.minFilter=T.LinearMipmapLinearFilter;texture.magFilter=T.LinearFilter;
+ return texture;
+}
+function createTerrainMaterial(T,texture){
+ var mat=new T.MeshStandardMaterial({color:0xffffff,roughness:.95,metalness:0,side:T.FrontSide});
+ if(!texture)return mat;
+ mat.onBeforeCompile=function(shader){
+  shader.uniforms.terrainAtlas={value:texture};
+  shader.vertexShader=shader.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 terrainWeights;\nvarying vec4 vTerrainWeights;\nvarying vec2 vTerrainXZ;')
+   .replace('#include <begin_vertex>','#include <begin_vertex>\nvTerrainWeights=terrainWeights;\nvTerrainXZ=position.xz;');
+  shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nuniform sampler2D terrainAtlas;\nvarying vec4 vTerrainWeights;\nvarying vec2 vTerrainXZ;')
+   .replace('#include <map_fragment>',[
+   'vec2 tileUV=fract(vTerrainXZ*0.21);',
+   'tileUV=clamp(tileUV,vec2(0.012),vec2(0.988));',
+   'vec3 a=texture2D(terrainAtlas,vec2((tileUV.x+0.0)/4.0,tileUV.y)).rgb;',
+   'vec3 b=texture2D(terrainAtlas,vec2((tileUV.x+1.0)/4.0,tileUV.y)).rgb;',
+   'vec3 c=texture2D(terrainAtlas,vec2((tileUV.x+2.0)/4.0,tileUV.y)).rgb;',
+   'vec3 d=texture2D(terrainAtlas,vec2((tileUV.x+3.0)/4.0,tileUV.y)).rgb;',
+   'vec4 w=max(vec4(0.0),vTerrainWeights);w/=max(dot(w,vec4(1.0)),0.0001);',
+   'vec3 terrainColor=a*w.r+b*w.g+c*w.b+d*w.a;',
+   'diffuseColor.rgb*=pow(terrainColor,vec3(2.2));'
+   ].join('\n'));
+ };
+ mat.customProgramCacheKey=function(){return 'bridge-terrain-4layers-v1';};
+ return mat;
+}
 function createMeshes(T,t){
  if(!t)return [];
  validate(t);
+ var atlas=atlasTexture(T),remaining=t.chunks.length;
  return t.chunks.map(function(c,n){
-  var side=c.segments+1,positions=[],normals=[],indices=[],eps=c.step;
+  var side=c.segments+1,positions=[],normals=[],indices=[],weights=[],eps=c.step;
   for(var j=0;j<side;j++)for(var i=0;i<side;i++){
    var x=c.x+i*c.step,z=c.z+j*c.step,h=c.heights[j*side+i];
    positions.push(x,h,z);
+   for(var k=0;k<4;k++)weights.push(weightAt(c,j*side+i,k)/255);
    var l=sampleHeight(t,x-eps,z),r=sampleHeight(t,x+eps,z),b=sampleHeight(t,x,z-eps),f=sampleHeight(t,x,z+eps);
    var ddx=((r===null?h:r)-(l===null?h:l))/((r!==null&&l!==null?2:1)*eps);
    var ddz=((f===null?h:f)-(b===null?h:b))/((f!==null&&b!==null?2:1)*eps);
@@ -93,8 +163,11 @@ function createMeshes(T,t){
   }
   var g=new T.BufferGeometry();
   g.setAttribute('position',new T.Float32BufferAttribute(positions,3));
-  g.setAttribute('normal',new T.Float32BufferAttribute(normals,3));g.setIndex(indices);
-  var mesh=new T.Mesh(g,new T.MeshStandardMaterial({color:0x21472f,roughness:.96,metalness:0,side:T.FrontSide}));
+  g.setAttribute('normal',new T.Float32BufferAttribute(normals,3));
+  g.setAttribute('terrainWeights',new T.Float32BufferAttribute(weights,4));g.setIndex(indices);
+  var material=createTerrainMaterial(T,atlas);
+  if(atlas)material.addEventListener('dispose',function(){remaining--;if(!remaining)atlas.dispose();});
+  var mesh=new T.Mesh(g,material);
   mesh.name='Terrain '+(n+1);mesh.receiveShadow=true;mesh.castShadow=true;return mesh;
  });
 }
@@ -110,7 +183,7 @@ function demoSlope(){
  });
  return validate(t);
 }
-var api={validate:validate,sampleHeight:sampleHeight,walkHeightfield:walkHeightfield,createMeshes:createMeshes,demoSlope:demoSlope};
+var api={validate:validate,sampleHeight:sampleHeight,weightAt:weightAt,walkHeightfield:walkHeightfield,createMeshes:createMeshes,demoSlope:demoSlope};
 root.BridgeTerrainCore=api;
 if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(typeof window==='undefined'?globalThis:window);
