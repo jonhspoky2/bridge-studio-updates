@@ -36,6 +36,8 @@ const {chromium}=require('playwright');
   await page.waitForFunction(()=>window.__bridgeQA().project.terrain?.chunks?.length===4);
   const flat=await page.evaluate(()=>window.__bridgeQA().project);
   assert.equal(flat.terrain.chunks.length,4);
+  assert.equal(await page.locator('#rightTitle').innerText(),'Terrain · Рельеф');
+  assert.ok((await page.locator('#inspector').innerText()).includes('Участков: 4'),'Terrain stats visible in Inspector');
   assert.ok(flat.terrain.chunks.every(c=>c.heights.every(h=>h===0)));
   await page.click('#terrainTool');
   assert.equal(await page.evaluate(()=>window.__bridgeQA().tool),'terrain');
