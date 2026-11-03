@@ -8,6 +8,7 @@ on:
       - 'tools/build_studio.py'
       - 'tests/terrain-core.cjs'
       - 'tests/terrain-browser.cjs'
+      - 'tests/terrain-sculpt.cjs'
       - '.github/workflows/terrain-source.yml'
   pull_request:
     paths:
@@ -29,6 +30,7 @@ jobs:
       - name: Validate source syntax
         run: |
           node --check src/terrain_core.js
+          node --check src/terrain_sculpt.js
           node --check src/game_runtime.js
           node --check src/studio.js
           python3 -m py_compile tools/build_studio.py
@@ -44,7 +46,9 @@ jobs:
           assert 250000 < len(b) < 1000000
           PY
       - name: Run terrain geometry and surface tests
-        run: node tests/terrain-core.cjs
+        run: |
+          node tests/terrain-core.cjs
+          node tests/terrain-sculpt.cjs
       - name: Build single-file editor from sources
         run: |
           python3 tools/build_studio.py --output /tmp/bridge-terrain-studio.html
