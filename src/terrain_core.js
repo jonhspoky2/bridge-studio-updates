@@ -39,6 +39,42 @@ function sampleHeight(t,x,z){
  }
  return null;
 }
+/**
+ * Move the player's feet across the heightfield without tunneling into edited slopes.
+ * A grounded walker can climb at most 0.45 world units per horizontal substep;
+ * a player in the air cannot enter terrain higher than their feet.
+ * The returned y is only stepped on walkable slopes; gravity/landings remain
+ * the responsibility of the game runtime.
+ */
+function walkHeightfield(t,x,z,y,dx,dz,followingTerrain,blocked){
+ if(!finite(x)||!finite(z)||!finite(y)||!finite(dx)||!finite(dz))throw Error('Terrain: invalid walking coordinates');
+ function obstructed(px,pz,py){return typeof blocked==='function'&&blocked(px,pz,py);}
+ if(!t||!Array.isArray(t.chunks)||!t.chunks.length){
+  if(!obstructed(x+dx,z,y))x+=dx;
+  if(!obstructed(x,z+dz,y))z+=dz;
+  return {x:x,z:z,y:y};
+ }
+ var height=sampleHeight(t,x,z);
+ var attached=!!followingTerrain&&height!==null&&Math.abs(y-height)<=.35;
+ var segment=Math.max(.05,Math.min(.35,t.chunks[0].step*.35));
+ var count=Math.max(1,Math.ceil(Math.max(Math.abs(dx),Math.abs(dz))/segment));
+ var sx=dx/count,sz=dz/count,climb=.45;
+ function canMove(px,pz){
+  var surface=sampleHeight(t,px,pz);
+  // Do not allow an airborne player to enter a hillside from the side.
+  // On the ground, permit small steps but reject cliffs higher than climb.
+  if(surface!==null&&surface>y+(attached?climb:EPS))return false;
+  if(obstructed(px,pz,y))return false;
+  if(attached&&surface!==null&&Math.abs(surface-y)<=climb)y=surface;
+  else if(surface===null)attached=false;
+  return true;
+ }
+ for(var i=0;i<count;i++){
+  if(canMove(x+sx,z))x+=sx;
+  if(canMove(x,z+sz))z+=sz;
+ }
+ return {x:x,z:z,y:y};
+}
 function createMeshes(T,t){
  if(!t)return [];
  validate(t);
@@ -74,7 +110,7 @@ function demoSlope(){
  });
  return validate(t);
 }
-var api={validate:validate,sampleHeight:sampleHeight,createMeshes:createMeshes,demoSlope:demoSlope};
+var api={validate:validate,sampleHeight:sampleHeight,walkHeightfield:walkHeightfield,createMeshes:createMeshes,demoSlope:demoSlope};
 root.BridgeTerrainCore=api;
 if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(typeof window==='undefined'?globalThis:window);
