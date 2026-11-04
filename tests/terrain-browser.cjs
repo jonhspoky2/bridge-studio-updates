@@ -129,7 +129,7 @@ const {chromium}=require('playwright');
   const slowFinish=await mildFrame.evaluate(()=>window.__bridgeDebugState());
   assert.equal(slowFinish.slideSlopeDeg,38,'default slow slide begins at 38 degrees');
   assert.ok(slowFinish.slideSpeed>0&&slowFinish.slideSpeed<=1.800001,'reduced slide speed');
-  assert.ok(slowFinish.position[0]<slowStart.position[0]-.015,'gentle downhill drift on 40-degree slope');
+  assert.ok(slowFinish.position[0]<slowStart.position[0]-.015,'gentle downhill drift on 40-degree slope: '+JSON.stringify({start:slowStart,finish:slowFinish}));
   assert.ok(slowStart.position[0]-slowFinish.position[0]<1.0,'40-degree slope should NOT send player rapidly downhill');
   await page.click('#btnStop');
   console.log('v0.19.4 slow slide in Play:',{startX:slowStart.position[0],endX:slowFinish.position[0],maxSpeed:slowFinish.slideSpeed,threshold:slowFinish.slideSlopeDeg});
