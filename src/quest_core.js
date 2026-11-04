@@ -6,7 +6,7 @@
  var VALID_ID=/^[A-Za-z0-9_-]{1,64}$/;
  function count(value,fallback,max){var n=Number(value);return Number.isFinite(n)?Math.max(0,Math.min(max,Math.floor(n))):fallback;}
  function cleanQuest(q){
-  if(!q||typeof q.id!=='string'||!VALID_ID.test(q.id))return null;
+  if(!q||typeof q.id!=='string'||(!VALID_ID.test(q.id)||['__proto__','constructor','prototype'].includes(q.id)))return null;
   return {id:q.id,title:String(q.title||q.id).slice(0,90),
    description:String(q.description||'').slice(0,220),event:q.event,
    source:typeof q.source==='string'?q.source:'*',required:Math.max(1,count(q.required,1,1000)),
