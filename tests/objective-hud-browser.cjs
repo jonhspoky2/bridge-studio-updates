@@ -39,12 +39,12 @@ const {execFileSync}=require('node:child_process'),{chromium}=require('playwrigh
   async function verify(frame,label){
    await frame.waitForFunction(()=>window.__bridgeDebugState&&document.querySelector('#questProgressTrack')&&!document.querySelector('#questProgressTrack').hidden,{timeout:30000});
    let bar=await frame.locator('#questProgressTrack').evaluate(el=>({current:el.getAttribute('aria-valuenow'),max:el.getAttribute('aria-valuemax'),width:el.querySelector('#questProgressFill').style.width}));
-   assert.deepEqual(bar,{current:'0',max:'1',width:'0.0%'},label+' empty quest');
+   assert.deepEqual(bar,{current:'0',max:'1',width:'0%'},label+' empty quest');
    await tap(frame,'e');
    const state=await frame.evaluate(()=>window.__bridgeDebugState());
    assert.equal(state.quests.quests.find(q=>q.id==='q').progress,1,label+' quest updated');
    bar=await frame.locator('#questProgressTrack').evaluate(el=>({current:el.getAttribute('aria-valuenow'),max:el.getAttribute('aria-valuemax'),width:el.querySelector('#questProgressFill').style.width,completed:el.classList.contains('complete')}));
-   assert.deepEqual(bar,{current:'1',max:'1',width:'100.0%',completed:true},label+' full HUD progress');
+   assert.deepEqual(bar,{current:'1',max:'1',width:'100%',completed:true},label+' full HUD progress');
    assert.match(await frame.locator('#objective').textContent(),/Collect one: 1\/1/,label+' HUD title synced');
    await tap(frame,'q');await frame.getByRole('button',{name:'Забрать награду'}).click();
    assert.equal((await frame.evaluate(()=>window.__bridgeDebugState())).coins,6,label+' one-time quest reward');
@@ -59,7 +59,7 @@ const {execFileSync}=require('node:child_process'),{chromium}=require('playwrigh
   await verify(game,'Exported HTML');
   await game.reload();await game.waitForFunction(()=>window.__bridgeDebugState&&window.__bridgeDebugState().coins===6,{timeout:30000});
   const restored=await game.locator('#questProgressTrack').evaluate(el=>({current:el.getAttribute('aria-valuenow'),max:el.getAttribute('aria-valuemax'),width:el.querySelector('#questProgressFill').style.width}));
-  assert.deepEqual(restored,{current:'1',max:'1',width:'100.0%'},'quest bar restored from localStorage');
+  assert.deepEqual(restored,{current:'1',max:'1',width:'100%'},'quest bar restored from localStorage');
   console.log('v0.25 objective HUD: Play, collect Quest Core, accessible bar, claim, standalone HTML and restore PASS',{bytes:Buffer.byteLength(exported)});
   await context.close();
  }finally{await browser.close();}
