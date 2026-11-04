@@ -27,6 +27,7 @@ on:
       - 'tests/quest-chains-browser.cjs'
       - 'tests/quest-collect-regression.cjs'
       - 'tests/quest-collect-browser.cjs'
+      - 'tests/first-game-kit-browser.cjs'
       - 'tests/terrain-paint.cjs'
       - 'tests/terrain-browser.cjs'
       - 'tests/terrain-sculpt.cjs'
@@ -57,6 +58,7 @@ on:
       - 'tests/quest-chains-browser.cjs'
       - 'tests/quest-collect-regression.cjs'
       - 'tests/quest-collect-browser.cjs'
+      - 'tests/first-game-kit-browser.cjs'
       - '.github/workflows/terrain-source.yml'
   workflow_dispatch:
 
@@ -87,6 +89,7 @@ jobs:
           node --check tests/quest-chains-browser.cjs
           node --check tests/quest-collect-regression.cjs
           node --check tests/quest-collect-browser.cjs
+          node --check tests/first-game-kit-browser.cjs
           node --check tests/gameplay-v020.cjs
           node --check tests/gameplay-v021.cjs
           node --check tests/design-d01.cjs
@@ -192,6 +195,7 @@ jobs:
           node tests/objective-hud-browser.cjs
           node tests/quest-chains-browser.cjs
           node tests/quest-collect-browser.cjs
+          node tests/first-game-kit-browser.cjs
           node tests/design-d01.cjs
           node tests/terrain-sculpt-browser.cjs
       - name: Upload Terrain Sculpt visual evidence
