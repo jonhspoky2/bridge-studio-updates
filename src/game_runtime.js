@@ -14,7 +14,12 @@ function saveProgress(){
  try{
   var picked=gameObjects.filter(function(q){return q.def.action==='collect'&&!q.mesh.visible;}).map(function(q){return q.def.id;});
   localStorage.setItem(saveKey,JSON.stringify({version:1,coins:state.coins,collected:state.collected,inventory:economy.snapshot(),
-   quests:quests.snapshot(),picked:picked,componentPicked:Object.keys(gameplay.state.picked).filter(function(k){return !!gameplay.state.picked[k];})}));
+   quests:quests.snapshot(),picked:picked,componentPicked:Object.keys(gameplay.state.picked).filter(function(k){return !!gameplay.state.picked[k];}),
+   // Graph flags and doors are part of the game state: a claimed gate quest
+   // must not reload into a permanently locked world.
+   flags:Object.keys(gameplay.state.flags).filter(function(k){return /^[A-Za-zА-Яа-яЁё_][A-Za-zА-Яа-яЁё0-9_-]{0,39}$/.test(k);}).slice(0,200).reduce(function(out,k){out[k]=gameplay.state.flags[k]===true;return out;},{}),
+   doorTargets:gameObjects.filter(function(q){return !!q.doorOrigin&&!!q.doorTarget;}).map(function(q){return q.def.id;}),
+   checkpoint:state.checkpoint}));
   saveAvailable=true;return true;
  }catch(e){saveAvailable=false;return false;}
 }
@@ -27,7 +32,14 @@ function loadProgress(){
   var number=function(v,max){return typeof v==='number'&&Number.isFinite(v)?Math.max(0,Math.min(max,Math.floor(v))):0;};
   state.coins=number(saved.coins,1000000000);
   economy.restore(saved.inventory);quests.restore(saved.quests);
+  // Old v1 saves have no graph state; treat it as optional. Never accept
+  // prototype keys or arbitrary values from localStorage into graph flags.
+  if(saved.flags&&typeof saved.flags==='object'&&!Array.isArray(saved.flags)){
+   Object.keys(saved.flags).slice(0,200).forEach(function(k){if(/^[A-Za-zА-Яа-яЁё_][A-Za-zА-Яа-яЁё0-9_-]{0,39}$/.test(k)&&typeof saved.flags[k]==='boolean')gameplay.state.flags[k]=saved.flags[k];});
+  }
+  if(Array.isArray(saved.checkpoint)&&saved.checkpoint.length===3&&saved.checkpoint.every(function(v){return typeof v==='number'&&Number.isFinite(v)&&Math.abs(v)<=10000;}))state.checkpoint=saved.checkpoint.slice();
   var byId=new Map(gameObjects.map(function(q){return [q.def.id,q];}));
+  (Array.isArray(saved.doorTargets)?saved.doorTargets:[]).slice(0,2000).forEach(function(id){var q=byId.get(id);if(q&&q.doorOrigin)q.doorTarget=true;});
   // Restore only pickups that still exist in this version of the scene.
   // An arbitrary componentPicked ID must never hide a door, spawn or console.
   (Array.isArray(saved.picked)?saved.picked:[]).slice(0,2000).forEach(function(id){
@@ -108,7 +120,7 @@ quests=window.BridgeQuests.create(doc,{addCoins:function(n){api.addCoins(n);},gr
 function respawn(){standingOn=null;slideSpeed=0;player.position.fromArray(state.checkpoint||spawn);var terrainStart=window.BridgeTerrainCore.sampleHeight(doc.terrain,player.position.x,player.position.z);if(terrainStart!==null&&player.position.y<terrainStart+.2)player.position.y=terrainStart+.2;velocity=0;grounded=false;state.won=false;document.getElementById('win').hidden=true;if(gameplay)gameplay.respawn();drawHud();}
 function restart(){state.checkpoint=null;state.coins=0;state.collected=0;if(economy)economy.reset();if(quests)quests.reset();closeGameOverlay();if(gameplay)gameplay.reset();gameObjects.forEach(function(q){if(q.def.action==='collect'||(q.def.components||[]).some(function(c){return c.type==='pickup';}))q.mesh.visible=true;if(q.doorOrigin){q.mesh.position.copy(q.doorOrigin);q.doorOpen=false;q.doorTarget=false;}});drawHud();respawn();saveProgress();}
 function action(q,mode){if(!q||!q.mesh.visible)return;var d=q.def,a=d.action||'none';if(a==='win'&&state.won)return;if(['win','checkpoint','hazard'].includes(a)){var stamp=performance.now();if(stamp-(q.lastTouch||0)<900)return;q.lastTouch=stamp;}if(a==='collect'){q.mesh.visible=false;state.collected++;api.addCoins(d.value||1);sfx('coin');if(economy&&d.itemId)economy.grant(d.itemId,1);notice('+'+(d.value||1)+' ✦ '+d.name);runScripts('collect',{id:d.id,name:d.name,value:d.value||1});if(gameplay)gameplay.emit('collect',d.id,{value:d.value||1});saveProgress();}
-else if(a==='win'){gameWin();}else if(a==='checkpoint'){state.checkpoint=d.position.slice();notice('Контрольная точка');}
+else if(a==='win'){gameWin();}else if(a==='checkpoint'){state.checkpoint=d.position.slice();notice('Контрольная точка');saveProgress();}
 else if(a==='hazard'){notice('Опасность!');respawn();}else if(a==='message'){notice(d.message||d.name);}
 else if(a==='toggle'){var tgt=gameObjects.find(function(x){return x.def.id===d.target;});if(tgt){tgt.mesh.visible=!tgt.mesh.visible;notice(tgt.mesh.visible?'Объект открыт':'Объект скрыт');}}
 else if(a==='teleport'){var t=gameObjects.find(function(x){return x.def.id===d.target;});if(t){player.position.copy(t.mesh.position);player.position.y+=.8;velocity=0;}}
@@ -180,7 +192,9 @@ function interactWith(q){
   // Gameplay graph 'interact' events remain backward compatible.
   var isPickup=a==='collect'||(d.components||[]).some(function(c){return c.type==='pickup'&&c.enabled!==false&&componentMode(c)==='interact';});
   if(quests&&!isPickup)quests.record('interact',d.id,1);
- drawHud();return true;
+ // Persist graph-only changes (flags, doors, checkpoints) even when the
+ // interaction did not award coins or items.
+ drawHud();saveProgress();return true;
 }
 function updateInteractionHint(){
  var hint=document.getElementById('interactPrompt'),q=uiOverlay?null:nearestInteraction();

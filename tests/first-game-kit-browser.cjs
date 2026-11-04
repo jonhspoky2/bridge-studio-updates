@@ -89,6 +89,9 @@ const {execFileSync}=require('node:child_process'),{chromium}=require('playwrigh
   assert.equal(restored.collected,3,'coin pickups persisted');
   assert.equal(restored.quests.quests.filter(q=>q.claimed).length,2,'quest chain persisted');
   assert.equal(restored.inventory.inventory.kit_pass,1,'item reward persisted');
+  assert.equal(restored.flags.gate_open,true,'graph flag survives save reload');
+  await game.waitForFunction(()=>window.__bridgeDebugState().doorStates.some(d=>d.id==='kit_door'&&d.open),{timeout:6000});
+  assert.equal((await game.evaluate(()=>window.__bridgeDebugState())).doorStates.find(d=>d.id==='kit_door').open,true,'opened gate survives save reload');
 
   // Corrupted or stale saves must not duplicate collection or hide non-pickup
   // scene objects. This also guards against future edits reusing object IDs.
@@ -99,6 +102,9 @@ const {execFileSync}=require('node:child_process'),{chromium}=require('playwrigh
    save.collected=999;
    save.picked=['kit_coin1','kit_coin1','kit_coin2','kit_coin3','unknown_coin'];
    save.componentPicked=['kit_door','kit_rover','kit_button'];
+   save.doorTargets=['kit_door','kit_coin1','unknown_door'];
+   save.flags={gate_open:true,invalid:'not a boolean','__proto__':true};
+   save.checkpoint=[Infinity,0,0];
    localStorage.setItem(key,JSON.stringify(save));
   });
   await game.reload();
@@ -106,6 +112,8 @@ const {execFileSync}=require('node:child_process'),{chromium}=require('playwrigh
   const recovered=await game.evaluate(()=>window.__bridgeDebugState());
   assert.equal(recovered.collected,3,'collected derived from unique existing pickups');
   assert.deepEqual(recovered.pickedComponentIds,[],'non-pickup component IDs ignored');
+  assert.equal(recovered.flags.gate_open,true,'valid flag survives malformed save');
+  await game.waitForFunction(()=>window.__bridgeDebugState().doorStates.some(d=>d.id==='kit_door'&&d.open),{timeout:6000});
   assert.equal(recovered.quests.quests.filter(q=>q.claimed).length,2,'quest progress retained after recovery');
 
   await page.locator('#projectInput').setInputFiles({name:'kit.rwscene',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(rwscene))});
