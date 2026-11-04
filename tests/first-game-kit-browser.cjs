@@ -65,7 +65,10 @@ const {execFileSync}=require('node:child_process'),{chromium}=require('playwrigh
    state=await frame.evaluate(()=>window.__bridgeDebugState());
    assert.equal(state.quests.quests.find(q=>q.id==='kit_q_gate').progress,1,label+' console quest progress');
    assert.equal(state.flags.gate_open,true,label+' graph flag set');
-   assert.equal(state.doorStates.find(d=>d.id==='kit_door').open,true,label+' graph-controlled door opens');
+   // The graph sets the door target instantly, but the door opens with a WebGL
+   // animation. Observe the physical gate after enough rendered frames.
+   await frame.waitForFunction(()=>window.__bridgeDebugState().doorStates.some(d=>d.id==='kit_door'&&d.open),{timeout:6000});
+   assert.equal((await frame.evaluate(()=>window.__bridgeDebugState())).doorStates.find(d=>d.id==='kit_door').open,true,label+' graph-controlled door opens');
    await press(frame,'q');
    await frame.getByRole('button',{name:'Забрать награду'}).click();
    state=await frame.evaluate(()=>window.__bridgeDebugState());
