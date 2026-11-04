@@ -57,7 +57,15 @@ jobs:
           PY
       - name: Verify v0.19.2 release candidate reproducibility
         run: |
-          python3 tools/build_studio.py --check updates/v0.19.2/studio.html
+          # v0.19.2 is an immutable signed release. New source changes are
+          # expected to differ, so verify its archived bytes, not source parity.
+          python3 - <<'PY'
+          import hashlib
+          from pathlib import Path
+          payload=Path('updates/v0.19.2/studio.html').read_bytes()
+          assert len(payload)==349645
+          assert hashlib.sha256(payload).hexdigest()=='ddd943b351e5cd92243c0b6c94c67be990c92350b85f713cf24d199932a0a8f6'
+          PY
           python3 - <<'PY'
           from pathlib import Path
           import hashlib
