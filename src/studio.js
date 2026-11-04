@@ -810,6 +810,74 @@ function refreshLogicEditor(){var list=$('logicGraphList');if(!list||!project)re
  if(timerInput){timerInput.disabled=!g||g.event!=='timer';if(g)timerInput.value=g.interval==null?2:g.interval;}
  $('logicSource').disabled=!g||g.event==='timer'||g.event==='signal';
  renderLogicGraph();renderLogicNodeProperties();}
+/* First Game Kit: reproducible, editable functional prototype, not final art.
+   Combines real GLB demo when available with reusable PBR, quest chain,
+   graph-controlled gate, items, journal and WARPGAME-compatible document. */
+function createFirstGameKit(){
+ if(!confirm('Создать новый проект Bridge Quest Island? Текущая сцена будет заменена. Сначала сохрани её.'))return;
+ var doc=blank(),lighting=Object.assign({},GRAPHICS_LOOKS.vibrant);
+ delete lighting.sky;doc.name='Bridge Quest Island · Starter Game Kit';
+ doc.settings.sky=GRAPHICS_LOOKS.vibrant.sky;doc.settings.lighting=lighting;
+ doc.settings.graphicsPreset='vibrant';doc.settings.saveProgress=true;doc.settings.maxHealth=100;
+ doc.objects=[];
+ function obj(id_,name,type,pos,scale,color,extra){
+  var o=Object.assign({id:id_,name:name,type:type,position:pos,rotation:[0,0,0],scale:scale,color:color,
+   solid:type==='block'||type==='ground'||type==='movingPlatform',action:'none',value:0},extra||{});
+  doc.objects.push(o);return o;
+ }
+ obj('kit_floor','Остров · поверхность','ground',[0,-.5,-3],[18,1,23],'#4c9b85');
+ obj('kit_spawn','Spawn · начало','spawn',[0,0,4],[1,1,1],'#72e9cc',{solid:false});
+ obj('kit_west','Стена слева','block',[-7.5,1,-3],[1,2,14],'#34758d');
+ obj('kit_east','Стена справа','block',[7.5,1,-3],[1,2,14],'#34758d');
+ var gold={roughness:.28,metalness:.7,opacity:1,emissive:'#614600',emissiveIntensity:.18,textureId:''};
+ var coinPositions=[[.3,1,3.7],[-.8,1,3.2],[1.2,1,2.8]];
+ coinPositions.forEach(function(p,i){obj('kit_coin'+(i+1),'Монета · '+(i+1),'coin',p,[1,1,1],'#ffe088',{solid:false,action:'collect',actionActivation:'interact',value:1,material:clone(gold)});});
+ obj('kit_button','Консоль ворот · E','block',[0,.65,1.75],[.85,.9,.85],'#5ccfe6',{solid:false,components:[{type:'trigger',enabled:true,activation:'interact'}],material:{roughness:.26,metalness:.6,emissive:'#205c80',emissiveIntensity:.3}});
+ obj('kit_gate_left','Слева от ворот','block',[-4.8,1.3,-1],[6.5,2.6,.75],'#335f83');
+ obj('kit_gate_right','Справа от ворот','block',[4.8,1.3,-1],[6.5,2.6,.75],'#335f83');
+ obj('kit_door','Запертые ворота','block',[0,1.3,-1],[3.1,2.6,.8],'#e7b97c',{components:[{type:'door',enabled:true,activation:'graph',openHeight:3.5}]});
+ obj('kit_guide','Проводник · NPC','npc',[2,1,.3],[.9,2,.9],'#9a8ae7',{solid:false,components:[{type:'npc',enabled:true,activation:'interact',message:'Собери три монеты, открой задания [Q] и забери награду. Потом используй голубую консоль у ворот.',cooldown:800,patrolDistance:0}]});
+ obj('kit_checkpoint','Чекпоинт','spawn',[0,0,-4],[1.1,1,1.1],'#6de6bc',{solid:false,components:[{type:'checkpoint',enabled:true,activation:'touch',cooldown:800}]});
+ obj('kit_hazard','Опасность · красная зона','hazard',[3,.12,-5],[2,.24,2],'#ec6671',{solid:false,components:[{type:'damage',enabled:true,activation:'touch',amount:15,cooldown:750}]});
+ obj('kit_finish','Финишный портал','goal',[0,1,-10],[1.4,1.5,1.1],'#74e6fa',{solid:false,action:'none',material:{roughness:.18,metalness:.35,emissive:'#1688bc',emissiveIntensity:.5}});
+ obj('kit_plinth','Постамент модели','block',[-3,.15,-3],[2.4,.3,2.4],'#608bac',{solid:true,material:{roughness:.45,metalness:.25,emissive:'#081926',emissiveIntensity:.05}});
+ var embedded=demoAsset();
+ if(embedded&&embedded!=='{}'){
+  doc.assets.push({id:'kit_rover_glb',name:'Mini Rover.glb',type:'glb',data:embedded,bytes:Math.floor(embedded.length*.75)});
+  obj('kit_rover','Mini Rover · GLB','glb',[-3,.3,-3],[1,1,1],'#ffffff',{solid:false,assetId:'kit_rover_glb',action:'message',message:'Мини-ровер: встроенный GLB-ассет. В Asset Studio можно заменить модель.'});
+ }
+ doc.materials=[Object.assign({id:'kit_gold_material',name:'Gold · монеты',color:'#ffe088'},gold)];
+ doc.items=[
+  {id:'kit_potion',name:'Островной сувенир',description:'Коллекционный предмет из магазина',price:3,maxStack:9,icon:'✦'},
+  {id:'kit_pass',name:'Пропуск через ворота',description:'Награда за второй этап задания',price:99,maxStack:1,icon:'◆'}
+ ];
+ doc.quests=[
+  {id:'kit_q_coins',title:'Собрать 3 монеты',description:'Найди три золотые монеты возле Spawn и нажми E.',event:'collect',source:'*',required:3,rewardCoins:6,rewardItemId:'',rewardItemCount:1},
+  {id:'kit_q_gate',title:'Открыть ворота',description:'Забери награду за монеты, затем нажми E на голубой консоли.',event:'interact',source:'kit_button',required:1,requiresQuestId:'kit_q_coins',rewardCoins:4,rewardItemId:'kit_pass',rewardItemCount:1}
+ ];
+ doc.graphs=[
+  {id:'kit_g_gate',name:'Проверить монеты и открыть ворота',event:'interact',source:'kit_button',enabled:true,
+   nodes:[{id:'kit_has',type:'ifCoins',amount:6,x:260,y:180},{id:'kit_flag',type:'flag',flag:'gate_open',value:true,x:520,y:120},
+    {id:'kit_door_node',type:'door',target:'kit_door',mode:'open',x:750,y:120},{id:'kit_open_msg',type:'message',text:'Ворота открыты! Иди к порталу.',x:950,y:120},
+    {id:'kit_earn',type:'message',text:'Сначала заверши первый квест и забери награду [Q].',x:520,y:300}],
+   links:[{from:'start',to:'kit_has',port:'next'},{from:'kit_has',to:'kit_flag',port:'yes'},
+    {from:'kit_flag',to:'kit_door_node',port:'next'},{from:'kit_door_node',to:'kit_open_msg',port:'next'},{from:'kit_has',to:'kit_earn',port:'no'}]},
+  {id:'kit_g_finish',name:'Финиш после открытия ворот',event:'touch',source:'kit_finish',enabled:true,
+   nodes:[{id:'kit_flag_check',type:'ifFlag',flag:'gate_open',value:true,x:260,y:180},{id:'kit_win_node',type:'win',x:550,y:120},
+    {id:'kit_again',type:'message',text:'Нужно открыть ворота с помощью квестов.',x:550,y:300}],
+   links:[{from:'start',to:'kit_flag_check',port:'next'},{from:'kit_flag_check',to:'kit_win_node',port:'yes'},{from:'kit_flag_check',to:'kit_again',port:'no'}]}
+ ];
+ doc.ui=[
+  {id:'kit_ui_coins',name:'Монеты',type:'label',text:'Монеты',bind:'coins',x:3,y:5,width:150,fontSize:18,color:'#ffffff',action:'none',value:0},
+  {id:'kit_ui_health',name:'Здоровье',type:'label',text:'HP',bind:'health',x:3,y:11,width:135,fontSize:16,color:'#ffffff',action:'none',value:0},
+  {id:'kit_ui_quests',name:'Задания',type:'button',text:'Задания [Q]',bind:'none',x:79,y:14,width:155,fontSize:15,color:'#ffffff',action:'quests',value:0},
+  {id:'kit_ui_inventory',name:'Рюкзак',type:'button',text:'Инвентарь [I]',bind:'none',x:79,y:22,width:155,fontSize:15,color:'#ffffff',action:'inventory',value:0},
+  {id:'kit_ui_shop',name:'Магазин',type:'button',text:'Магазин [B]',bind:'none',x:79,y:30,width:155,fontSize:15,color:'#ffffff',action:'shop',value:0}
+ ];
+ doc.scripts=[{id:'kit_welcome',name:'Стартовый инструктаж',event:'start',enabled:true,code:'api.message("Bridge Quest Island: собери 3 монеты [E], нажми Q для награды, открой ворота и дойди до портала.");'}];
+ try{loadDoc(doc);setTab('world');status('Создан Bridge Quest Island Game Kit: GLB, PBR, 2 квеста, графы, NPC, магазин и HUD. Запусти Play, затем проверь HTML-экспорт.');}
+ catch(e){status('Game Kit не создан: '+e.message,true);}
+}
 function createGameplayDemo(){if(!confirm('Создать новый проект Gameplay Lab? Текущий проект будет заменён. Сохрани его заранее.'))return;
  recordSnapshot(true);stop();var doc=blank();doc.name='Gameplay Lab · Visual Logic';doc.settings.sky='#a3c9db';doc.settings.maxHealth=100;doc.objects[0].scale=[34,1,34];
  function obj(id_,name,type,pos,scale,col,components){doc.objects.push({id:id_,name:name,type:type,position:pos,rotation:[0,0,0],scale:scale,color:col,solid:type==='block'||type==='ground'||type==='movingPlatform',action:'none',value:0,components:components||[]});}
