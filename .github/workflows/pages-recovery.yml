@@ -1,0 +1,60 @@
+name: Repair stale GitHub Pages deployment
+
+# One-shot recovery: only runs when this workflow file is added or edited.
+# Does not modify or publish the signed Bridge Studio update channel.
+on:
+  push:
+    paths:
+      - '.github/workflows/pages-recovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+
+jobs:
+  unblock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Cancel stalled GitHub Pages deployment from frozen handoff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          STUCK_SHA: f6d5c8e0a2f5d68f730beb71a8a869cc63eb1e38
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Checking the Pages deployment flagged as in progress by GitHub..."
+          code="$(curl -sS -o /tmp/pages-status.json -w '%{http_code}' \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$GH_REPO/pages/deployments/$STUCK_SHA")"
+          echo "Pages GET HTTP $code"
+          if [ "$code" = 200 ]; then
+            cat /tmp/pages-status.json
+          elif [ "$code" = 404 ]; then
+            echo "No stale deployment at specified SHA; nothing to cancel."
+            exit 0
+          else
+            cat /tmp/pages-status.json
+            exit 1
+          fi
+          status="$(python3 -c 'import json;print(json.load(open("/tmp/pages-status.json")).get("status","unknown"))')"
+          if [ "$status" = "succeed" ] || [ "$status" = "cancelled" ]; then
+            echo "Deployment already terminal: $status"
+            exit 0
+          fi
+          response="$(curl -sS -o /tmp/pages-cancel.json -w '%{http_code}' \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$GH_REPO/pages/deployments/$STUCK_SHA/cancel")"
+          echo "Cancel deployment HTTP $response"
+          if [ "$response" != 204 ]; then
+            cat /tmp/pages-cancel.json
+            exit 1
+          fi
+          echo "Stale Pages deployment cancelled. Run a new Pages build after recovery."
