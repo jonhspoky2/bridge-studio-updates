@@ -65,3 +65,13 @@ node tests/build-v0183.cjs
 - GitHub Actions проверка SHA-256 и размера подписанного патча: `https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41750692295` — success.
 - GitHub Pages deployment манифеста v0.19.3: `https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41750692968` — success.
 - Windows Bridge.exe: установка/физика в пользовательском GPU-окружении — **не проверено**, требуется smoke test.
+
+
+## v0.19.4 — Slow slope sliding (release)
+
+- Контроль геометрии и порога 37°/40°, ограничение скорости 1.8 и сохранение climb limit 45° — CI.
+- Browser Play: проверено медленное сползание на склоне 40° (длительность теста учитывает медленный SwiftShader). Play и WARPGAME HTML на склоне 60° без взбирания — success.
+- CI: https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41752335617 — success; main https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41752603972 — success.
+- Подпись RSA/PKCS#1 v1.5 SHA256 проверена локально публичным ключом издателя; SHA-256 и размер в GitHub Actions https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41752803028 — success.
+- GitHub Pages v0.19.4: https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41752802204 — success.
+- Реальный Windows Bridge.exe и установка обновления: **не проверено**.

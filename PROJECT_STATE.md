@@ -1,6 +1,17 @@
 # Bridge Studio — текущее состояние
 
-## Актуальный выпуск: v0.19.3 — Terrain Slope Physics (опубликован)
+## Актуальный выпуск: v0.19.4 — Slow Slope Sliding (опубликован)
+
+- Подписанный патч: `updates/v0.19.4/studio.html`, **356 950 байт**, SHA-256 `bec59a3d731988418ce7f6f65e14b6b60be6e1e538a50aca907963d4417d57db`.
+- Канал подписанных обновлений: `updates/manifest.txt`, коммит активации `6a64d321eebaf3c192bf911e7d5d8de68a8c527f`. Штатная подпись издателя RSA-3072/SHA-256 проверена локально.
+- Публикация: PR #9, merge `fcea01453278e563c2cd8f20760df4182b3184fd`.
+- Автотесты Terrain и WebGL Play/Export: https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41752335617 — success; повторный прогон в main #41752603972 — success.
+- Проверка размера/хеша патча: https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41752803028 — success. GitHub Pages https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41752802204 — success.
+- Физика: скольжение начинается на 7° раньше лимита ходьбы (38° при стандартных 45°), скорость не больше 1.8 единицы/с вместо 7, ускорение зависит от крутизны.
+- Угол ходьбы остаётся 45°; старые `.rwscene`, Play и HTML-экспорт совместимы.
+- Установка и физика в Windows Bridge.exe на ПК пользователя ещё **не подтверждены**.
+
+## Предыдущий выпуск: v0.19.3 — Terrain Slope Physics (опубликован)
 
 - **Подписанный канал:** v0.19.3, `updates/manifest.txt`, коммит активации `13821a9b599df1f50e6f43c8c3c4634ec680a889`.
 - **Payload:** `updates/v0.19.3/studio.html`, 355 996 байт, SHA-256 `7e716078e307b2c5c840e2fe2c298ed9cf5c1c5963e9d86b9c57dc0139808ed3`.
