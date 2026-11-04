@@ -112,6 +112,27 @@ const {chromium}=require('playwright');
   assert.ok(slopeResult.position[0]<-7.8,'Export must stop 60 degree uphill climb: '+JSON.stringify(slopeResult));
   assert.equal(slopeResult.maxWalkableSlopeDeg,45);
   console.log('v0.19.3 Play/Export steep face:',{playX:slopePlay.position[0],exportX:slopeResult.position[0]});
+  // v0.19.4: drift starts seven degrees earlier, but stays slow.
+  const mildDoc=JSON.parse(JSON.stringify(steepDoc));
+  for(const chunk of mildDoc.terrain.chunks)
+   for(let z=0;z<=chunk.segments;z++)for(let x=0;x<=chunk.segments;x++)
+    chunk.heights[z*(chunk.segments+1)+x]=(chunk.x+x*chunk.step+16)*Math.tan(40*Math.PI/180);
+  mildDoc.objects.filter(o=>o.type==='spawn').forEach(o=>{o.position=[-3,0,0];});
+  await page.locator('#projectInput').setInputFiles({name:'slow-slide.rwscene',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(mildDoc))});
+  await page.waitForFunction(()=>window.__bridgeQA().project.terrain?.chunks?.length===2);
+  await page.click('#btnPlay');
+  await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('3D-кадр'),{timeout:15000});
+  const mildFrame=await (await page.locator('#playFrame').elementHandle()).contentFrame();
+  await mildFrame.waitForFunction(()=>window.__bridgeDebugState&&window.__bridgeDebugState().grounded&&window.__bridgeDebugState().terrainSlope>=39);
+  const slowStart=await mildFrame.evaluate(()=>window.__bridgeDebugState());
+  await mildFrame.waitForTimeout(1400);
+  const slowFinish=await mildFrame.evaluate(()=>window.__bridgeDebugState());
+  assert.equal(slowFinish.slideSlopeDeg,38,'default slow slide begins at 38 degrees');
+  assert.ok(slowFinish.slideSpeed>0&&slowFinish.slideSpeed<=1.800001,'reduced slide speed');
+  assert.ok(slowFinish.position[0]<slowStart.position[0]-.015,'gentle downhill drift on 40-degree slope');
+  assert.ok(slowStart.position[0]-slowFinish.position[0]<1.0,'40-degree slope should NOT send player rapidly downhill');
+  await page.click('#btnStop');
+  console.log('v0.19.4 slow slide in Play:',{startX:slowStart.position[0],endX:slowFinish.position[0],maxSpeed:slowFinish.slideSpeed,threshold:slowFinish.slideSlopeDeg});
   await context.close();
  }finally{await browser.close();}
 })().catch(err=>{console.error(err);process.exitCode=1;});
