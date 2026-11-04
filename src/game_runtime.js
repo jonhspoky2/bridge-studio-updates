@@ -14,7 +14,14 @@ function saveProgress(){
  try{
   var picked=gameObjects.filter(function(q){return q.def.action==='collect'&&!q.mesh.visible;}).map(function(q){return q.def.id;});
   localStorage.setItem(saveKey,JSON.stringify({version:1,coins:state.coins,collected:state.collected,inventory:economy.snapshot(),
-   quests:quests.snapshot(),picked:picked,componentPicked:Object.keys(gameplay.state.picked).filter(function(k){return !!gameplay.state.picked[k];})}));
+   quests:quests.snapshot(),picked:picked,componentPicked:Object.keys(gameplay.state.picked).filter(function(k){return !!gameplay.state.picked[k];}),
+   // Graph flags and doors are part of the game state: a claimed gate quest
+   // must not reload into a permanently locked world.
+   flags:Object.keys(gameplay.state.flags).filter(function(k){return /^[A-Za-zА-Яа-яЁё_][A-Za-zА-Яа-яЁё0-9_-]{0,39}$/.test(k);}).slice(0,200).reduce(function(out,k){out[k]=gameplay.state.flags[k]===true;return out;},{}),
+   // Counters drive visual-logic gates; omitting them resets puzzles on reload.
+   counters:Object.keys(gameplay.state.counters).filter(function(k){return /^[A-Za-zА-Яа-яЁё_][A-Za-zА-Яа-яЁё0-9_-]{0,39}$/.test(k);}).slice(0,200).reduce(function(out,k){var v=gameplay.state.counters[k];if(typeof v==='number'&&Number.isFinite(v))out[k]=Math.max(-1000000000,Math.min(1000000000,v));return out;},{}),
+   doorTargets:gameObjects.filter(function(q){return !!q.doorOrigin&&!!q.doorTarget;}).map(function(q){return q.def.id;}),
+   checkpoint:state.checkpoint}));
   saveAvailable=true;return true;
  }catch(e){saveAvailable=false;return false;}
 }
@@ -25,15 +32,35 @@ function loadProgress(){
   if(!saved||saved.version!==1||typeof saved!=='object')return false;
   restoring=true;
   var number=function(v,max){return typeof v==='number'&&Number.isFinite(v)?Math.max(0,Math.min(max,Math.floor(v))):0;};
-  state.coins=number(saved.coins,1000000000);state.collected=number(saved.collected,requiredCoins);
+  state.coins=number(saved.coins,1000000000);
   economy.restore(saved.inventory);quests.restore(saved.quests);
-  var valid=new Set(gameObjects.map(function(q){return q.def.id;}));
+  // Old v1 saves have no graph state; treat it as optional. Never accept
+  // prototype keys or arbitrary values from localStorage into graph flags.
+  if(saved.flags&&typeof saved.flags==='object'&&!Array.isArray(saved.flags)){
+   Object.keys(saved.flags).slice(0,200).forEach(function(k){if(/^[A-Za-zА-Яа-яЁё_][A-Za-zА-Яа-яЁё0-9_-]{0,39}$/.test(k)&&typeof saved.flags[k]==='boolean')gameplay.state.flags[k]=saved.flags[k];});
+  }
+  // Restore only finite bounded numeric graph counters; old saves omit this field.
+  if(saved.counters&&typeof saved.counters==='object'&&!Array.isArray(saved.counters)){
+   Object.keys(saved.counters).slice(0,200).forEach(function(k){var v=saved.counters[k];if(/^[A-Za-zА-Яа-яЁё_][A-Za-zА-Яа-яЁё0-9_-]{0,39}$/.test(k)&&typeof v==='number'&&Number.isFinite(v)&&Math.abs(v)<=1000000000)gameplay.state.counters[k]=v;});
+  }
+  if(Array.isArray(saved.checkpoint)&&saved.checkpoint.length===3&&saved.checkpoint.every(function(v){return typeof v==='number'&&Number.isFinite(v)&&Math.abs(v)<=10000;}))state.checkpoint=saved.checkpoint.slice();
+  var byId=new Map(gameObjects.map(function(q){return [q.def.id,q];}));
+  (Array.isArray(saved.doorTargets)?saved.doorTargets:[]).slice(0,2000).forEach(function(id){var q=byId.get(id);if(q&&q.doorOrigin)q.doorTarget=true;});
+  // Restore only pickups that still exist in this version of the scene.
+  // An arbitrary componentPicked ID must never hide a door, spawn or console.
   (Array.isArray(saved.picked)?saved.picked:[]).slice(0,2000).forEach(function(id){
-   if(!valid.has(id))return;var q=objectById(id);if(q&&q.def.action==='collect')q.mesh.visible=false;
+   var q=byId.get(id);if(q&&q.def.action==='collect')q.mesh.visible=false;
   });
   (Array.isArray(saved.componentPicked)?saved.componentPicked:[]).slice(0,2000).forEach(function(id){
-   if(!valid.has(id))return;gameplay.state.picked[id]=true;var q=objectById(id);if(q)q.mesh.visible=false;
+   var q=byId.get(id);if(!q||!(q.def.components||[]).some(function(c){return c.type==='pickup';}))return;
+   gameplay.state.picked[id]=true;q.mesh.visible=false;
   });
+  // A saved counter may be stale, duplicated or out of range. When the save
+  // contains pickup IDs, derive it from the actual scene rather than trusting
+  // an unrelated counter; retain legacy counter-only saves for compatibility.
+  state.collected=Array.isArray(saved.picked)?
+   gameObjects.filter(function(q){return q.def.action==='collect'&&!q.mesh.visible;}).length:
+   number(saved.collected,requiredCoins);
   restoring=false;return true;
  }catch(e){restoring=false;saveAvailable=false;return false;}
 }
@@ -46,8 +73,8 @@ function gameMaterial(d){var m=gameMaterialConfig(d),opts={color:d.color||'#59bb
 function decorateGameGlb(root,d){var mc=gameMaterialConfig(d);root.traverse(function(o){if(!o.material)return;o.castShadow=true;o.receiveShadow=true;if(mc.overrideGLB)o.material=Array.isArray(o.material)?o.material.map(function(){return gameMaterial(d);}):gameMaterial(d);});} 
 var renderer;
 try{renderer=new T.WebGLRenderer({antialias:true,powerPreference:'high-performance'});}catch(e){report('error','WebGL: '+e.message);status.textContent='WebGL недоступен: '+e.message;status.style.display='block';var boot=document.getElementById('bootIndicator');if(boot)boot.textContent=status.textContent;return;}
-renderer.setPixelRatio(Math.min(1.65,window.devicePixelRatio||1));renderer.outputEncoding=T.sRGBEncoding;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.22;renderer.shadowMap.enabled=!!environment.shadows;renderer.shadowMap.type=T.PCFSoftShadowMap;root.appendChild(renderer.domElement);
-var camera=new T.PerspectiveCamera(65,1,.04,180),sun=new T.DirectionalLight(environment.sunColor,Number(environment.sunIntensity));sun.position.set(-10,19,13);sun.castShadow=!!environment.shadows;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-28;sun.shadow.camera.right=28;sun.shadow.camera.top=28;sun.shadow.camera.bottom=-28;scene.add(sun);scene.add(new T.HemisphereLight(environment.ambientColor,0x63788b,Number(environment.ambientIntensity)));
+renderer.setPixelRatio(Math.min(1.65,window.devicePixelRatio||1));renderer.outputEncoding=T.sRGBEncoding;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=(function(v){v=Number(v);return Number.isFinite(v)?Math.min(2,Math.max(.45,v)):1.22;})(environment.exposure);renderer.shadowMap.enabled=!!environment.shadows;renderer.shadowMap.type=T.PCFSoftShadowMap;root.appendChild(renderer.domElement);
+var camera=new T.PerspectiveCamera(65,1,.04,180),sun=new T.DirectionalLight(environment.sunColor,Number(environment.sunIntensity));sun.position.set((function(v){v=Number(v);return Number.isFinite(v)?Math.min(100,Math.max(-100,v)):-10;})(environment.sunX),(function(v){v=Number(v);return Number.isFinite(v)?Math.min(100,Math.max(.5,v)):19;})(environment.sunY),(function(v){v=Number(v);return Number.isFinite(v)?Math.min(100,Math.max(-100,v)):13;})(environment.sunZ));sun.castShadow=!!environment.shadows;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-28;sun.shadow.camera.right=28;sun.shadow.camera.top=28;sun.shadow.camera.bottom=-28;scene.add(sun);scene.add(new T.HemisphereLight(environment.ambientColor,0x63788b,Number(environment.ambientIntensity)));
 var gameObjects=[],colliders=[],triggerObjs=[],spawn=[0,0,0],spawnSelected=false,player=new T.Group(),velocity=0,grounded=false,prevY=0,keys={},yaw=0,camPitch=.38,drag=null,elapsed=0,firstPerson=false,gameplay=null,standingOn=null,slideSpeed=0;
 var minTerrainClearance=Infinity;var terrainMeshes=[];if(doc.terrain){window.BridgeTerrainCore.validate(doc.terrain);terrainMeshes=window.BridgeTerrainCore.createMeshes(T,doc.terrain);terrainMeshes.forEach(function(m){scene.add(m);});}
 var moveSpeed=Math.max(1,Math.min(18,Number(doc.settings.moveSpeed)||5)),jumpPower=Math.max(3,Math.min(18,Number(doc.settings.jumpPower)||7.6));
@@ -69,10 +96,10 @@ if(mode==='quests'){
   var e=document.createElement('div');e.style.cssText='border-bottom:1px solid #345067;padding:14px 6px';
   var title=document.createElement('strong');title.textContent=q.title;e.appendChild(title);
   var detail=document.createElement('div');detail.style.cssText='font-size:12px;color:#b5cce1;margin:5px 0';
-  detail.textContent=(q.description?q.description+' · ':'')+q.progress+' / '+q.required+' · Награда: '+q.rewardCoins+' монет'+(q.rewardItemId?' + '+q.rewardItemCount+'× '+q.rewardItemId:'');e.appendChild(detail);
+  var prerequisite=tasks.find(function(t){return t.id===q.requiresQuestId;});detail.textContent=(q.description?q.description+' · ':'')+q.progress+' / '+q.required+' · Награда: '+q.rewardCoins+' монет'+(q.rewardItemId?' + '+q.rewardItemCount+'× '+q.rewardItemId:'')+(q.locked?' · Сначала: '+(prerequisite?prerequisite.title:q.requiresQuestId):'');e.appendChild(detail);
   var button=document.createElement('button');button.style.cssText='background:#38b69d;color:#082c28;border:0;border-radius:8px;padding:8px 12px;font-weight:700';
-  button.disabled=q.claimed||q.progress<q.required;
-  button.textContent=q.claimed?'Получено':q.progress<q.required?'Выполняется':'Забрать награду';
+  button.disabled=q.claimed||q.locked||q.progress<q.required;
+  button.textContent=q.claimed?'Получено':q.locked?'Заблокировано':q.progress<q.required?'Выполняется':'Забрать награду';
   button.onclick=function(){var result;restoring=true;try{result=quests.claim(q.id);}finally{restoring=false;}if(result.ok){saveProgress();notice('Задание выполнено: '+q.title);sfx('buy');showGameOverlay('quests');}
    else notice(result.error);};e.appendChild(button);panel.appendChild(e);
  });
@@ -82,7 +109,16 @@ if(!entries.length){var p=document.createElement('p');p.textContent='В прое
 function notice(s){status.textContent=s;status.style.display='block';clearTimeout(notice._t);notice._t=setTimeout(function(){status.style.display='none';},2600);}
 function runScripts(type,ctx){(doc.scripts||[]).forEach(function(s){if(!s.enabled||s.event!==type)return;try{new Function('api','ctx','state','"use strict";\n'+s.code)(api,ctx||{},state);}catch(e){notice('Ошибка '+s.name+': '+e.message);console.error('Bridge script:',s.name,e);report('script-warning',s.name+': '+(e.stack||e.message));}});}
 var uiNodes=[];
-function drawHud(){uiNodes.forEach(function(ent){if(ent.config.bind==='coins')ent.el.textContent=(ent.config.text||'Coins')+': '+state.coins;else if(ent.config.bind==='health'&&gameplay)ent.el.textContent=(ent.config.text||'HP')+': '+gameplay.state.health;else if(ent.config.bind==='inventory'&&economy)ent.el.textContent=(ent.config.text||'Рюкзак')+': '+Object.values(economy.snapshot().inventory).reduce(function(a,n){return a+n;},0);else if(ent.config.bind==='healthPercent'&&gameplay){var percentage=Math.max(0,Math.min(100,Math.round(100*gameplay.state.health/gameplay.state.maxHealth)));ent.el.textContent=(ent.config.text||'HP')+' '+percentage+'%';if(ent.config.type==='progress')ent.el.style.background='linear-gradient(90deg,#51e0a0 '+percentage+'%,#293948 '+percentage+'%)';}});var hp=document.getElementById('health');if(hp&&gameplay)hp.textContent='♥ '+gameplay.state.health+' / '+gameplay.state.maxHealth;var built=document.getElementById('defaultCoins');if(built)built.textContent='✦ '+state.coins;var objective=document.getElementById('objective');if(objective){var questList=quests?quests.list():[],pending=questList.find(function(q){return !q.claimed;}),done=questList.filter(function(q){return q.claimed;}).length;objective.textContent=(requiredCoins?'Собрано '+state.collected+' / '+requiredCoins:'Свободный режим')+(pending?' · '+pending.title+': '+pending.progress+'/'+pending.required+' [Q]':questList.length?' · Задания '+done+'/'+questList.length+' [Q]':'');}}
+function drawHud(){uiNodes.forEach(function(ent){if(ent.config.bind==='coins')ent.el.textContent=(ent.config.text||'Coins')+': '+state.coins;else if(ent.config.bind==='health'&&gameplay)ent.el.textContent=(ent.config.text||'HP')+': '+gameplay.state.health;else if(ent.config.bind==='inventory'&&economy)ent.el.textContent=(ent.config.text||'Рюкзак')+': '+Object.values(economy.snapshot().inventory).reduce(function(a,n){return a+n;},0);else if(ent.config.bind==='healthPercent'&&gameplay){var percentage=Math.max(0,Math.min(100,Math.round(100*gameplay.state.health/gameplay.state.maxHealth)));ent.el.textContent=(ent.config.text||'HP')+' '+percentage+'%';if(ent.config.type==='progress')ent.el.style.background='linear-gradient(90deg,#51e0a0 '+percentage+'%,#293948 '+percentage+'%)';}});var hp=document.getElementById('health');if(hp&&gameplay)hp.textContent='♥ '+gameplay.state.health+' / '+gameplay.state.maxHealth;var built=document.getElementById('defaultCoins');if(built)built.textContent='✦ '+state.coins;var objective=document.getElementById('objective');if(objective){var questList=quests?quests.list():[],pending=questList.find(function(q){return !q.claimed&&!q.locked;})||questList.find(function(q){return !q.claimed;}),done=questList.filter(function(q){return q.claimed;}).length;objective.textContent=(requiredCoins?'Собрано '+state.collected+' / '+requiredCoins:'Свободный режим')+(pending?' · '+pending.title+': '+pending.progress+'/'+pending.required+' [Q]':questList.length?' · Задания '+done+'/'+questList.length+' [Q]':'');
+ var progressTrack=document.getElementById('questProgressTrack'),progressFill=document.getElementById('questProgressFill');
+ if(progressTrack&&progressFill){
+  // The first unclaimed quest is the active objective. Claiming switches to the
+  // next task. Pure coin maps without quests get a backward-compatible fallback.
+  var maximum=pending?pending.required:requiredCoins,current=pending?pending.progress:state.collected;
+  if(maximum>0){current=Math.max(0,Math.min(current,maximum));progressTrack.hidden=false;progressTrack.setAttribute('aria-valuenow',String(current));progressTrack.setAttribute('aria-valuemax',String(maximum));progressTrack.setAttribute('aria-valuetext',(pending?pending.title:'Собрано')+': '+current+'/'+maximum);progressFill.style.width=(100*current/maximum).toFixed(1)+'%';progressTrack.classList.toggle('complete',current>=maximum);}
+  else{progressTrack.hidden=true;progressFill.style.width='0%';progressTrack.classList.remove('complete');}
+ }
+}}
 function gameWin(){if(state.won)return;if(requiredCoins&&state.collected<requiredCoins){notice('Сначала собери предметы: '+state.collected+'/'+requiredCoins);return;}state.won=true;notice('ПОБЕДА! Монет: '+state.coins);sfx('win');document.getElementById('win').hidden=false;runScripts('win',{coins:state.coins});if(gameplay)gameplay.emit('win','',{coins:state.coins});}
 var api={addCoins:function(n){state.coins+=Math.max(0,Math.round(Number(n)||0));drawHud();saveProgress();},setCoins:function(n){state.coins=Math.max(0,Math.round(Number(n)||0));drawHud();saveProgress();},getCoins:function(){return state.coins;},message:notice,win:gameWin,reset:function(){restart();},teleport:function(x,y,z){player.position.set(+x||0,+y||0,+z||0);velocity=0;},setVisible:function(id,v){var q=gameObjects.find(function(o){return o.def.id===id;});if(q)q.mesh.visible=!!v;},getObject:function(id){return gameObjects.find(function(o){return o.def.id===id;})||null;}};
 economy=window.BridgeEconomy.create(doc,{getCoins:function(){return state.coins;},setCoins:function(n){state.coins=Math.max(0,Math.floor(Number(n)||0));drawHud();saveProgress();},onChange:function(){drawHud();saveProgress();},onPurchase:function(id,n){if(quests)quests.record('buy',id,n);}});
@@ -90,7 +126,7 @@ quests=window.BridgeQuests.create(doc,{addCoins:function(n){api.addCoins(n);},gr
 function respawn(){standingOn=null;slideSpeed=0;player.position.fromArray(state.checkpoint||spawn);var terrainStart=window.BridgeTerrainCore.sampleHeight(doc.terrain,player.position.x,player.position.z);if(terrainStart!==null&&player.position.y<terrainStart+.2)player.position.y=terrainStart+.2;velocity=0;grounded=false;state.won=false;document.getElementById('win').hidden=true;if(gameplay)gameplay.respawn();drawHud();}
 function restart(){state.checkpoint=null;state.coins=0;state.collected=0;if(economy)economy.reset();if(quests)quests.reset();closeGameOverlay();if(gameplay)gameplay.reset();gameObjects.forEach(function(q){if(q.def.action==='collect'||(q.def.components||[]).some(function(c){return c.type==='pickup';}))q.mesh.visible=true;if(q.doorOrigin){q.mesh.position.copy(q.doorOrigin);q.doorOpen=false;q.doorTarget=false;}});drawHud();respawn();saveProgress();}
 function action(q,mode){if(!q||!q.mesh.visible)return;var d=q.def,a=d.action||'none';if(a==='win'&&state.won)return;if(['win','checkpoint','hazard'].includes(a)){var stamp=performance.now();if(stamp-(q.lastTouch||0)<900)return;q.lastTouch=stamp;}if(a==='collect'){q.mesh.visible=false;state.collected++;api.addCoins(d.value||1);sfx('coin');if(economy&&d.itemId)economy.grant(d.itemId,1);notice('+'+(d.value||1)+' ✦ '+d.name);runScripts('collect',{id:d.id,name:d.name,value:d.value||1});if(gameplay)gameplay.emit('collect',d.id,{value:d.value||1});saveProgress();}
-else if(a==='win'){gameWin();}else if(a==='checkpoint'){state.checkpoint=d.position.slice();notice('Контрольная точка');}
+else if(a==='win'){gameWin();}else if(a==='checkpoint'){state.checkpoint=d.position.slice();notice('Контрольная точка');saveProgress();}
 else if(a==='hazard'){notice('Опасность!');respawn();}else if(a==='message'){notice(d.message||d.name);}
 else if(a==='toggle'){var tgt=gameObjects.find(function(x){return x.def.id===d.target;});if(tgt){tgt.mesh.visible=!tgt.mesh.visible;notice(tgt.mesh.visible?'Объект открыт':'Объект скрыт');}}
 else if(a==='teleport'){var t=gameObjects.find(function(x){return x.def.id===d.target;});if(t){player.position.copy(t.mesh.position);player.position.y+=.8;velocity=0;}}
@@ -138,11 +174,11 @@ function isInteractable(q){
  if(d.action&&d.action!=='none'&&actionMode(d)==='interact')return true;
  if((d.components||[]).some(function(c){return c.enabled!==false&&componentMode(c)==='interact';}))return true;
  if((doc.graphs||[]).some(function(g){return g&&g.enabled!==false&&g.event==='interact'&&(g.source==='*'||g.source===d.id);}))return true;
- return !!(quests&&quests.list().some(function(x){return x.event==='interact'&&!x.claimed&&x.source===d.id&&x.progress<x.required;}));
+ return !!(quests&&quests.list().some(function(x){return x.event==='interact'&&!x.locked&&!x.claimed&&x.source===d.id&&x.progress<x.required;}));
 }
 function interactiveDistance(q){var dx=q.mesh.position.x-player.position.x,dz=q.mesh.position.z-player.position.z,dy=q.mesh.position.y-player.position.y;return Math.hypot(dx,dz,dy*.65);}
 function isPendingQuestTarget(q){
- return !!(quests&&quests.list().some(function(x){return x.event==='interact'&&x.source===q.def.id&&!x.claimed&&x.progress<x.required;}));
+ return !!(quests&&quests.list().some(function(x){return x.event==='interact'&&x.source===q.def.id&&!x.locked&&!x.claimed&&x.progress<x.required;}));
 }
 function nearestInteraction(){
  return triggerObjs.filter(function(q){return isInteractable(q)&&interactiveDistance(q)<2.85;})
@@ -158,15 +194,20 @@ function interactWith(q){
  if(a!=='none'&&actionMode(d)==='interact')action(q,'interact');
  runScripts('interact',{id:d.id,name:d.name,action:a,value:d.value||0});
  if(gameplay)gameplay.interact(d.id,performance.now());
- if(quests)quests.record('interact',d.id,1);
- drawHud();return true;
+ // Picking up an object is a collect quest event, not an interact quest event.
+  // Gameplay graph 'interact' events remain backward compatible.
+  var isPickup=a==='collect'||(d.components||[]).some(function(c){return c.type==='pickup'&&c.enabled!==false&&componentMode(c)==='interact';});
+  if(quests&&!isPickup)quests.record('interact',d.id,1);
+ // Persist graph-only changes (flags, doors, checkpoints) even when the
+ // interaction did not award coins or items.
+ drawHud();saveProgress();return true;
 }
 function updateInteractionHint(){
  var hint=document.getElementById('interactPrompt'),q=uiOverlay?null:nearestInteraction();
  if(!hint)return;
  hint.style.display=q?'block':'none';
  if(!q)return;
- var task=quests&&quests.list().find(function(v){return v.event==='interact'&&v.source===q.def.id&&!v.claimed;});
+ var task=quests&&quests.list().find(function(v){return v.event==='interact'&&v.source===q.def.id&&!v.locked&&!v.claimed;});
  hint.textContent='[E] '+(q.def.action==='collect'?'Подобрать ':task?'Задание · ':'')+(q.def.name||'Объект')+(task?' · '+task.progress+'/'+task.required:'');
  hint.style.borderColor=task?'#e5b85a':'#5bcad8';
 }
@@ -179,7 +220,7 @@ window.addEventListener('keydown',function(e){var k=gameKey(e);keys[k]=true;if([
 window.addEventListener('keyup',function(e){keys[gameKey(e)]=false;});
 window.addEventListener('blur',function(){keys={};});
 window.addEventListener('message',function(e){if(e.source!==window.parent||!e.data)return;var d=e.data;if(d.bridgeInput==='key'&&typeof d.key==='string'){keys[d.key]=!!d.down;}else if(d.bridgeInput==='clear'){keys={};}});
-window.__bridgeDebugState=function(){return {position:[player.position.x,player.position.y,player.position.z],keys:Object.keys(keys).filter(function(k){return !!keys[k];}),grounded:grounded,yaw:yaw,playerYaw:player.rotation.y,playerForward:[-Math.sin(player.rotation.y),-Math.cos(player.rotation.y)],coins:state.coins,collected:state.collected,environment:environment,health:gameplay&&gameplay.state.health,checkpointId:gameplay&&gameplay.state.checkpointId,flags:gameplay&&gameplay.state.flags,counters:gameplay&&gameplay.state.counters,graphTrace:gameplay&&gameplay.trace(),firstPerson:firstPerson,doorStates:gameObjects.filter(function(q){return !!q.doorOrigin;}).map(function(q){return {id:q.def.id,open:q.doorOpen,y:q.mesh.position.y};}),inventory:economy&&economy.snapshot(),quests:quests&&quests.snapshot(),saveEnabled:saveEnabled,saveAvailable:saveAvailable,overlay:uiOverlay&&uiOverlay.id,firstDt:firstDelta,minTerrainClearance:minTerrainClearance===Infinity?null:minTerrainClearance,terrainChunks:terrainMeshes.length,terrainY:window.BridgeTerrainCore.sampleHeight(doc.terrain,player.position.x,player.position.z),terrainSlope:((window.BridgeTerrainCore.sampleSurface(doc.terrain,player.position.x,player.position.z)||{}).slopeDeg??null),maxWalkableSlopeDeg:maxWalkableSlopeDeg,slideSlopeDeg:slideSlopeDeg,slideSpeed:slideSpeed,objects:gameObjects.length,glbInstances:gameObjects.filter(function(q){return q.def.type==='glb';}).length,embeddedAssets:(doc.assets||[]).length,embeddedTextures:(doc.textures||[]).length,interactionTarget:(nearestInteraction()||{def:{}}).def.id||null};};
+window.__bridgeDebugState=function(){return {position:[player.position.x,player.position.y,player.position.z],keys:Object.keys(keys).filter(function(k){return !!keys[k];}),grounded:grounded,yaw:yaw,playerYaw:player.rotation.y,playerForward:[-Math.sin(player.rotation.y),-Math.cos(player.rotation.y)],coins:state.coins,collected:state.collected,environment:environment,renderExposure:renderer.toneMappingExposure,sunPosition:[sun.position.x,sun.position.y,sun.position.z],health:gameplay&&gameplay.state.health,checkpointId:gameplay&&gameplay.state.checkpointId,flags:gameplay&&gameplay.state.flags,counters:gameplay&&gameplay.state.counters,graphTrace:gameplay&&gameplay.trace(),firstPerson:firstPerson,doorStates:gameObjects.filter(function(q){return !!q.doorOrigin;}).map(function(q){return {id:q.def.id,open:q.doorOpen,y:q.mesh.position.y};}),inventory:economy&&economy.snapshot(),quests:quests&&quests.snapshot(),pickedComponentIds:gameplay&&Object.keys(gameplay.state.picked).filter(function(id){return !!gameplay.state.picked[id];}),saveEnabled:saveEnabled,saveAvailable:saveAvailable,overlay:uiOverlay&&uiOverlay.id,firstDt:firstDelta,minTerrainClearance:minTerrainClearance===Infinity?null:minTerrainClearance,terrainChunks:terrainMeshes.length,terrainY:window.BridgeTerrainCore.sampleHeight(doc.terrain,player.position.x,player.position.z),terrainSlope:((window.BridgeTerrainCore.sampleSurface(doc.terrain,player.position.x,player.position.z)||{}).slopeDeg??null),maxWalkableSlopeDeg:maxWalkableSlopeDeg,slideSlopeDeg:slideSlopeDeg,slideSpeed:slideSpeed,objects:gameObjects.length,glbInstances:gameObjects.filter(function(q){return q.def.type==='glb';}).length,embeddedAssets:(doc.assets||[]).length,embeddedTextures:(doc.textures||[]).length,interactionTarget:(nearestInteraction()||{def:{}}).def.id||null};};
 window.__bridgeEconomyQA={grantCoins:function(n){api.addCoins(n);return state.coins;},inventory:function(){return economy.snapshot();}};
 function resize(){var w=root.clientWidth,h=root.clientHeight;renderer.setSize(w,h);camera.aspect=w/Math.max(1,h);camera.updateProjectionMatrix();}window.addEventListener('resize',resize);resize();var prev=performance.now(),firstDelta=null;
 var fatalRenderFailure=false;function frame(now){if(fatalRenderFailure)return;requestAnimationFrame(frame);var dt=Math.max(0,Math.min(.05,(now-prev)/1000));if(firstDelta===null)firstDelta=dt;prev=now;elapsed+=dt;
