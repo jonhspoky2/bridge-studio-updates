@@ -1,0 +1,73 @@
+name: Build Bridge Studio v0.22.2 unsigned release candidate
+
+on:
+  push:
+    branches:
+      - release/v0.22.2-candidate-20261104
+    paths:
+      - 'src/**'
+      - 'tools/build_studio.py'
+      - 'assets/**'
+      - 'updates/changelog.json'
+      - '.github/workflows/release-candidate-v0222.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-candidate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout candidate branch
+        uses: actions/checkout@v4
+
+      - name: Check source syntax
+        run: |
+          set -euo pipefail
+          for src in src/*.js; do node --check "$src"; done
+          python3 -m py_compile tools/build_studio.py
+
+      - name: Build unsigned single-file editor
+        run: |
+          set -euo pipefail
+          python3 tools/build_studio.py --output /tmp/bridge-studio-v0.22.2.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          payload = Path('/tmp/bridge-studio-v0.22.2.html').read_bytes()
+          html = payload.decode('utf-8')
+          assert b'/* @bridge:' not in payload, 'Unresolved build include'
+          assert '<title>Bridge Studio 0.22.2' in html, 'Wrong editor version'
+          assert 'GAME MAKER 0.22.2' in html, 'Wrong header version'
+          assert 300_000 < len(payload) < 2_500_000, 'Unexpected editor payload size'
+          for marker in ('BridgeQuestCore', 'BridgeTerrainCore', 'BridgeGameplayCore'):
+              assert marker in html, 'Missing module: ' + marker
+          print('UNSIGNED_CANDIDATE_BYTES=' + str(len(payload)))
+          print('UNSIGNED_CANDIDATE_SHA256=' + hashlib.sha256(payload).hexdigest())
+          print('Signing is NOT performed in CI: publisher private key is unavailable.')
+          PY
+
+      - name: Upload unsigned candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: bridge-v0.22.2-unsigned-candidate
+          path: /tmp/bridge-studio-v0.22.2.html
+          if-no-files-found: error
+
+      - name: Stage candidate on release branch only (never change signed manifest)
+        if: github.ref == 'refs/heads/release/v0.22.2-candidate-20261104' && github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          mkdir -p updates/v0.22.2
+          cp /tmp/bridge-studio-v0.22.2.html updates/v0.22.2/studio.html
+          python3 tools/build_studio.py --check updates/v0.22.2/studio.html
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add updates/v0.22.2/studio.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'Stage unsigned v0.22.2 candidate (signed manifest unchanged)'
+            git push origin HEAD:release/v0.22.2-candidate-20261104
+          fi
