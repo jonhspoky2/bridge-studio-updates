@@ -20,6 +20,7 @@ on:
       - 'tests/quest-v022-browser.cjs'
       - 'tests/interaction-v0221.cjs'
       - 'tests/interaction-v0221-browser.cjs'
+      - 'tests/graphics-shadow-quality.cjs'
       - 'tests/graphics-foundation-browser.cjs'
       - 'tests/material-bank-browser.cjs'
       - 'tests/objective-hud-browser.cjs'
@@ -51,6 +52,7 @@ on:
       - 'tests/quest-v022-browser.cjs'
       - 'tests/interaction-v0221.cjs'
       - 'tests/interaction-v0221-browser.cjs'
+      - 'tests/graphics-shadow-quality.cjs'
       - 'tests/graphics-foundation-browser.cjs'
       - 'tests/material-bank-browser.cjs'
       - 'tests/objective-hud-browser.cjs'
@@ -82,6 +84,7 @@ jobs:
           node --check src/quest_core.js
           node --check tests/quest-v022.cjs
           node --check tests/interaction-v0221.cjs
+          node --check tests/graphics-shadow-quality.cjs
           node --check tests/graphics-foundation-browser.cjs
           node --check tests/material-bank-browser.cjs
           node --check tests/objective-hud-browser.cjs
@@ -132,6 +135,7 @@ jobs:
           node tests/terrain-slope.cjs
           node tests/gameplay-v020.cjs
           node tests/gameplay-v021.cjs
+          node tests/graphics-shadow-quality.cjs
           node tests/quest-v022.cjs
           node tests/quest-chains.cjs
           node tests/quest-collect-regression.cjs
