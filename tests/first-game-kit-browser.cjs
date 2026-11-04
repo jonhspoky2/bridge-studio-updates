@@ -89,6 +89,25 @@ const {execFileSync}=require('node:child_process'),{chromium}=require('playwrigh
   assert.equal(restored.collected,3,'coin pickups persisted');
   assert.equal(restored.quests.quests.filter(q=>q.claimed).length,2,'quest chain persisted');
   assert.equal(restored.inventory.inventory.kit_pass,1,'item reward persisted');
+
+  // Corrupted or stale saves must not duplicate collection or hide non-pickup
+  // scene objects. This also guards against future edits reusing object IDs.
+  await game.evaluate(()=>{
+   const key=Object.keys(localStorage).find(k=>k.startsWith('bridge-game-save:v1:'));
+   if(!key)throw Error('missing game save');
+   const save=JSON.parse(localStorage.getItem(key));
+   save.collected=999;
+   save.picked=['kit_coin1','kit_coin1','kit_coin2','kit_coin3','unknown_coin'];
+   save.componentPicked=['kit_door','kit_rover','kit_button'];
+   localStorage.setItem(key,JSON.stringify(save));
+  });
+  await game.reload();
+  await game.waitForFunction(()=>window.__bridgeDebugState&&window.__bridgeDebugState().objects>=16);
+  const recovered=await game.evaluate(()=>window.__bridgeDebugState());
+  assert.equal(recovered.collected,3,'collected derived from unique existing pickups');
+  assert.deepEqual(recovered.pickedComponentIds,[],'non-pickup component IDs ignored');
+  assert.equal(recovered.quests.quests.filter(q=>q.claimed).length,2,'quest progress retained after recovery');
+
   await page.locator('#projectInput').setInputFiles({name:'kit.rwscene',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(rwscene))});
   await page.waitForFunction(()=>window.__bridgeQA().project.name.includes('Quest Island'));
   const reread=await page.evaluate(()=>window.__bridgeQA().project);
