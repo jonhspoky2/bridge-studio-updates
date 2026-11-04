@@ -8,7 +8,11 @@
 >
 > **© 2026 [jonhspoky2](https://github.com/jonhspoky2). [MIT License](LICENSE).**
 
-**[Community handoff & architecture](COMMUNITY_HANDOFF.md)** · **[Contributing](CONTRIBUTING.md)** · **[Roadmap history](ROADMAP.md)** · **[Testing](TESTING.md)**
+[![License: MIT](https://img.shields.io/badge/license-MIT-2ea44f)](LICENSE) [![Status: Frozen](https://img.shields.io/badge/status-frozen-718096)](COMMUNITY_HANDOFF.md) [![Three.js r128](https://img.shields.io/badge/Three.js-r128-2c3e50)](ARCHITECTURE.md)
+
+**[Project website](https://jonhspoky2.github.io/bridge-studio-updates/)** · **[Browser preview (experimental)](https://jonhspoky2.github.io/bridge-studio-updates/updates/v0.22.2/studio.html)** · **[Real screenshots](docs/SHOWCASE.md)** · **[Community maintainer issue](https://github.com/jonhspoky2/bridge-studio-updates/issues/30)**
+
+**[Community handoff & architecture](COMMUNITY_HANDOFF.md)** · **[Contributing](CONTRIBUTING.md)** · **[Outreach kit](docs/OUTREACH.md)** · **[Roadmap history](ROADMAP.md)** · **[Testing](TESTING.md)**
 
 ## What is Bridge Studio?
 
@@ -17,6 +21,12 @@ Bridge Studio is a Windows-oriented, local-first 3D game editor inspired by the 
 It is an **experimental editor, not a finished replacement for Roblox Studio or Unity**.
 
 ![Bridge Studio editor interface](docs/design-d01/after-shell.jpg)
+
+**Visual gameplay editor (actual Chromium screenshots):**
+
+![Bridge Studio node logic graph](docs/design-d01/after-logic-1440.jpg)
+
+Screenshots come from [documented Chromium/SwiftShader tests](docs/design-d01/README.md), not a concept illustration. The browser-preview link opens an existing public HTML file; browser-hosted editing has not been independently certified and Windows-host features may be unavailable.
 
 ### Current capabilities
 
