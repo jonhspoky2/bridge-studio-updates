@@ -9,6 +9,8 @@ assert.deepEqual(quality.config({shadowQuality:'high',shadowDistance:42,shadowBi
  ...expected,quality:'high',size:2048,distance:42,bias:-0.001,normalBias:0.055
 },'high quality values are deterministic');
 assert.deepEqual(quality.config({shadowQuality:'unknown',shadowDistance:NaN,shadowBias:Infinity,shadowNormalBias:-Infinity}),expected,'invalid settings not propagated to WebGL');
+assert.deepEqual(quality.config({shadowDistance:'  ',shadowBias:true,shadowNormalBias:{value:0.1}}),expected,'blank, boolean and object settings use defaults instead of coercion');
+assert.equal(quality.config({shadowDistance:'42'}).distance,42,'numeric strings from inspector remain supported');
 const limits=quality.config({shadowQuality:'low',shadowDistance:-100,shadowBias:100,shadowNormalBias:-20});
 assert.equal(limits.size,512);
 assert.equal(limits.distance,12);
