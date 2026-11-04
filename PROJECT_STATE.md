@@ -1,6 +1,18 @@
 # Bridge Studio — текущее состояние
 
-## Актуальный выпуск: v0.21.1 — UI Foundation 1.0 (подписан и опубликован)
+## Актуальный выпуск: v0.22.0 — Game Systems & Quests (подписан и опубликован)
+
+- **Манифест:** `updates/manifest.txt`, версия `0.22.0`, коммит активации `e7f0c581b60bd4279dbe60f5c98073600f77a162`.
+- **HTML:** `updates/v0.22.0/studio.html`, 410 488 байт, SHA-256 `b20b8e0d6b966a6845b8d5177b2f329848ab4b84de69ff582d35e9845d997182`, Git blob `beceb803f7f74f361d128b7d291b1d35a6a6c113`.
+- **Цифровая подпись:** издательский RSA-3072/SHA-256, проверена по ключу предыдущего выпуска v0.21.1. Закрытый ключ не помещён в репозиторий.
+- **PR:** [#14](https://github.com/jonhspoky2/bridge-studio-updates/pull/14), merge `45b92fdb2786d1e4a5beab4b2b1f300a10b10ada`.
+- **CI:** [Quest/Game Systems Play/Export](https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41765737279) — success; [повторный main CI](https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41766421496) — success.
+- **Подписанный канал:** [проверка патча](https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41766756024) — success; [GitHub Pages](https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41766755905) — success.
+- **Новые системы:** редактор заданий (interact/collect/buy), награды монетами и предметами, журнал [Q], пример 3 взаимодействий, опциональный локальный прогресс (монеты/инвентарь/покупки/задания/подборы). Формат проекта .rwscene и экспорт HTML совместимы. Документ: [GAME_SYSTEMS_V022_SPEC.md](GAME_SYSTEMS_V022_SPEC.md).
+- **Ограничения:** локальные сохранения работают внутри origin/browser profile при доступе к localStorage. Play с sandbox может не сохранять данные. Это не синхронизация аккаунтов.
+- **Windows:** установка обновления в Bridge.exe, аппаратный GPU и DPI 125–200% не проверены пользователем.
+
+## Предыдущий выпуск: v0.21.1 — UI Foundation 1.0 (подписан и опубликован)
 
 - **Подписанный патч:** `updates/v0.21.1/studio.html`, 386 757 байт, SHA-256 `39883409655715e7c487908b22745ff0666b7470aaea9f625aa6a06abb558edb` (Git blob `4e21503e00b307049319d1a5bba7aca910ec9605`).
 - **Канал обновлений:** `updates/manifest.txt` переключён на `0.21.1`, подписанный коммит `3167b37b4276ec402c5e3e9a0c982cd53f9783b7`. RSA-3072/SHA-256 проверена тем же ключом, что и v0.21.0; приватный ключ отсутствует в GitHub.
