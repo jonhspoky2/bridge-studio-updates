@@ -120,7 +120,7 @@ quests=window.BridgeQuests.create(doc,{addCoins:function(n){api.addCoins(n);},gr
 function respawn(){standingOn=null;slideSpeed=0;player.position.fromArray(state.checkpoint||spawn);var terrainStart=window.BridgeTerrainCore.sampleHeight(doc.terrain,player.position.x,player.position.z);if(terrainStart!==null&&player.position.y<terrainStart+.2)player.position.y=terrainStart+.2;velocity=0;grounded=false;state.won=false;document.getElementById('win').hidden=true;if(gameplay)gameplay.respawn();drawHud();}
 function restart(){state.checkpoint=null;state.coins=0;state.collected=0;if(economy)economy.reset();if(quests)quests.reset();closeGameOverlay();if(gameplay)gameplay.reset();gameObjects.forEach(function(q){if(q.def.action==='collect'||(q.def.components||[]).some(function(c){return c.type==='pickup';}))q.mesh.visible=true;if(q.doorOrigin){q.mesh.position.copy(q.doorOrigin);q.doorOpen=false;q.doorTarget=false;}});drawHud();respawn();saveProgress();}
 function action(q,mode){if(!q||!q.mesh.visible)return;var d=q.def,a=d.action||'none';if(a==='win'&&state.won)return;if(['win','checkpoint','hazard'].includes(a)){var stamp=performance.now();if(stamp-(q.lastTouch||0)<900)return;q.lastTouch=stamp;}if(a==='collect'){q.mesh.visible=false;state.collected++;api.addCoins(d.value||1);sfx('coin');if(economy&&d.itemId)economy.grant(d.itemId,1);notice('+'+(d.value||1)+' ✦ '+d.name);runScripts('collect',{id:d.id,name:d.name,value:d.value||1});if(gameplay)gameplay.emit('collect',d.id,{value:d.value||1});saveProgress();}
-else if(a==='win'){gameWin();}else if(a==='checkpoint'){state.checkpoint=d.position.slice();notice('Контрольная точка');}
+else if(a==='win'){gameWin();}else if(a==='checkpoint'){state.checkpoint=d.position.slice();notice('Контрольная точка');saveProgress();}
 else if(a==='hazard'){notice('Опасность!');respawn();}else if(a==='message'){notice(d.message||d.name);}
 else if(a==='toggle'){var tgt=gameObjects.find(function(x){return x.def.id===d.target;});if(tgt){tgt.mesh.visible=!tgt.mesh.visible;notice(tgt.mesh.visible?'Объект открыт':'Объект скрыт');}}
 else if(a==='teleport'){var t=gameObjects.find(function(x){return x.def.id===d.target;});if(t){player.position.copy(t.mesh.position);player.position.y+=.8;velocity=0;}}
@@ -192,7 +192,9 @@ function interactWith(q){
   // Gameplay graph 'interact' events remain backward compatible.
   var isPickup=a==='collect'||(d.components||[]).some(function(c){return c.type==='pickup'&&c.enabled!==false&&componentMode(c)==='interact';});
   if(quests&&!isPickup)quests.record('interact',d.id,1);
- drawHud();return true;
+ // Persist graph-only changes (flags, doors, checkpoints) even when the
+ // interaction did not award coins or items.
+ drawHud();saveProgress();return true;
 }
 function updateInteractionHint(){
  var hint=document.getElementById('interactPrompt'),q=uiOverlay?null:nearestInteraction();
