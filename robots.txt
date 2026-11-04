@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://jonhspoky2.github.io/bridge-studio-updates/sitemap.xml
