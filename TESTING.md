@@ -107,3 +107,13 @@ node tests/build-v0183.cjs
 - Издательская RSA-3072/SHA-256 подпись и манифест проверены: https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41766756024 — success.
 - GitHub Pages: https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41766755905 — success.
 - Не проверено: реальный Windows Bridge.exe, GPU и интерфейс в Windows DPI 125–200%.
+
+## Bridge Studio v0.22.1 — Quest Interaction QA
+
+- `tests/interaction-v0221.cjs`: Pickup по E по умолчанию, явно заданный touch и отсутствие повторной награды — passed.
+- `tests/interaction-v0221-browser.cjs`: **монета рядом со Spawn + цель квеста рядом**, 0 автоматических монет, E×3 продвигает квест до 3/3, E×1 подбирает монету, один запуск графа, Q вручает награду один раз; то же в экспортированном HTML и после перезагрузки localStorage — passed.
+- [CI feature](https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41768438930) и [CI main](https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41768876915) — success, включая старые Gameplay/Terrain и D-01 UI.
+- Подписанный HTML 415175 bytes, SHA-256 `2894ca890af0be9cb0cadbb66a58ef468b5c052ce9e8fedceac46dd1072ba212`, Git blob `f00e06e58b2dc9484e2e2857c5b7b2806868f5b4`.
+- [Подпись активного манифеста](https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41769263536) — success.
+- [GitHub Pages deployment](https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41769262732) — success.
+- Реальная Windows Bridge.exe установка, GPU и DPI 125–200% ещё требуют пользовательского smoke-test.
