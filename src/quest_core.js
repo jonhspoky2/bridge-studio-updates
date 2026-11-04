@@ -24,7 +24,7 @@
    if(EVENTS.indexOf(q.event)<0)errors.push('Недопустимое событие задания '+q.id);
    if(!Number.isInteger(raw.required)||raw.required<1||raw.required>1000)errors.push('Некорректная цель задания '+q.id);
    if(raw.rewardCoins!==undefined&&(!Number.isInteger(raw.rewardCoins)||raw.rewardCoins<0||raw.rewardCoins>100000))errors.push('Некорректная награда задания '+q.id);
-   if(q.source!=='*'&&((q.event==='buy'?!items:!objects).includes(q.source)))errors.push('Отсутствует источник задания '+q.id);
+   if(q.source!=='*'&&!(q.event==='buy'?items:objects).includes(q.source))errors.push('Отсутствует источник задания '+q.id);
    if(q.rewardItemId&&!items.includes(q.rewardItemId))errors.push('Неизвестный предмет награды '+q.id);
   });
   return {errors:errors,warnings:[]};
