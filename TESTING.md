@@ -87,3 +87,13 @@ node tests/build-v0183.cjs
 - Signed manifest check: https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41760013054 — success.
 - GitHub Pages: https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41760013090 — success.
 - Unverified: Windows Bridge.exe installation and GPU gameplay on the user's machine.
+
+## Bridge Studio v0.21.1 — UI Foundation QA
+
+- CI Node/Chromium: https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41763670197 — success.
+- Новая обязательная браузерная проверка `tests/design-d01.cjs`: свойства объектов, перетаскивание и связи графов, состояния UI, размеры 1280/1440/1920, фокус клавиатуры, сохранение .rwscene, Play/Stop, экспорт HTML.
+- Полный регресс Gameplay Engine v0.20/0.21, Terrain, Sculpt и материалы выполняется вместе с UI-тестом.
+- Signed build: `updates/v0.21.1/studio.html`, 386757 bytes, SHA-256 `39883409655715e7c487908b22745ff0666b7470aaea9f625aa6a06abb558edb`.
+- RSA-подпись проверена по публичному ключу издателя; CI проверки манифеста: https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41763989389 — success.
+- GitHub Pages: https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41763989357 — success.
+- Непроверенное окружение: реальный Windows Bridge.exe, GPU и DPI Windows 125–200%.
