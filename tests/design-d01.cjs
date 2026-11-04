@@ -14,6 +14,7 @@ const fs=require('node:fs/promises'),path=require('node:path'),os=require('node:
   await ctx.route('**/*',r=>{
    const u=new URL(r.request().url());
    if(u.pathname.endsWith('/studio.html'))return r.fulfill({contentType:'text/html; charset=utf-8',body:html});
+   if(u.pathname.includes('/Playding/js/auth.js'))return r.fulfill({contentType:'text/javascript',body:''});
    if(u.pathname.endsWith('/game.html'))return r.fulfill({contentType:'text/html; charset=utf-8',body:exported});
    if(u.pathname.endsWith('/three.min.js'))return r.fulfill({contentType:'text/javascript',body:three});
    return r.fulfill({json:{current:'0.21.0',configured:true,ready:false}});
