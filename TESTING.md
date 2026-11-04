@@ -75,3 +75,15 @@ node tests/build-v0183.cjs
 - Подпись RSA/PKCS#1 v1.5 SHA256 проверена локально публичным ключом издателя; SHA-256 и размер в GitHub Actions https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41752803028 — success.
 - GitHub Pages v0.19.4: https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41752802204 — success.
 - Реальный Windows Bridge.exe и установка обновления: **не проверено**.
+
+
+## Bridge Studio v0.21.0 — Visual Scripting QA
+
+- Unit `tests/gameplay-v021.cjs`: signal routing, 3 clicks, graph-only doors, exact/greater/less comparisons, restart, recursion safety, invalid input and legacy graphs — passed.
+- Browser `tests/gameplay-v021-browser.cjs`: visual demo, object creation, .rwscene save, three E interactions, door opening, one-time reward, standalone exported HTML — passed.
+- CI on feature branch: https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41759348496 — success.
+- Main branch CI: https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41759793024 — success.
+- Payload SHA-256 `3b06b4355f6121fefd6162fb9f417dd7d81c75d3d9da14ce1ed5990f656e9b3b`, 371401 bytes. RSA-3072/SHA-256 signature validated with existing publisher key.
+- Signed manifest check: https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41760013054 — success.
+- GitHub Pages: https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41760013090 — success.
+- Unverified: Windows Bridge.exe installation and GPU gameplay on the user's machine.
