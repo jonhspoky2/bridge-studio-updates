@@ -96,6 +96,13 @@ jobs:
           print('Built editor:', len(html.encode('utf-8')), 'bytes')
           PY
 
+      - name: Upload unsigned v0.19.3 build for offline signing
+        uses: actions/upload-artifact@v4
+        with:
+          name: bridge-v0193-candidate-unsigned
+          path: /tmp/bridge-terrain-studio.html
+          if-no-files-found: error
+
   browser:
     runs-on: ubuntu-24.04
     steps:
