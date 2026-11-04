@@ -20,6 +20,8 @@ on:
       - 'tests/quest-v022-browser.cjs'
       - 'tests/interaction-v0221.cjs'
       - 'tests/interaction-v0221-browser.cjs'
+      - 'tests/quest-collect-regression.cjs'
+      - 'tests/quest-collect-browser.cjs'
       - 'tests/terrain-paint.cjs'
       - 'tests/terrain-browser.cjs'
       - 'tests/terrain-sculpt.cjs'
@@ -43,6 +45,8 @@ on:
       - 'tests/quest-v022-browser.cjs'
       - 'tests/interaction-v0221.cjs'
       - 'tests/interaction-v0221-browser.cjs'
+      - 'tests/quest-collect-regression.cjs'
+      - 'tests/quest-collect-browser.cjs'
       - '.github/workflows/terrain-source.yml'
   workflow_dispatch:
 
@@ -66,6 +70,8 @@ jobs:
           node --check src/quest_core.js
           node --check tests/quest-v022.cjs
           node --check tests/interaction-v0221.cjs
+          node --check tests/quest-collect-regression.cjs
+          node --check tests/quest-collect-browser.cjs
           node --check tests/gameplay-v020.cjs
           node --check tests/gameplay-v021.cjs
           node --check tests/design-d01.cjs
@@ -110,6 +116,7 @@ jobs:
           node tests/gameplay-v021.cjs
           node tests/quest-v022.cjs
           node tests/interaction-v0221.cjs
+          node tests/quest-collect-regression.cjs
           node tests/terrain-sculpt.cjs
           node tests/terrain-paint.cjs
           node tests/terrain-paint-performance.cjs
@@ -164,6 +171,7 @@ jobs:
           node tests/gameplay-v021-browser.cjs
           node tests/quest-v022-browser.cjs
           node tests/interaction-v0221-browser.cjs
+          node tests/quest-collect-browser.cjs
           node tests/design-d01.cjs
           node tests/terrain-sculpt-browser.cjs
       - name: Upload Terrain Sculpt visual evidence
