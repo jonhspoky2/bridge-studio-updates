@@ -1,5 +1,17 @@
 # Bridge Studio — текущее состояние
 
+## Актуальный выпуск: v0.21.0 — Visual Scripting (подписан и опубликован)
+
+- **Версия канала:** `updates/manifest.txt` = `0.21.0`; коммит переключения `be1a503aa1f62fd5e7c5a24b2188de674a0b199b`.
+- **Payload:** `updates/v0.21.0/studio.html`, 371 401 байт, SHA-256 `3b06b4355f6121fefd6162fb9f417dd7d81c75d3d9da14ce1ed5990f656e9b3b`, Git blob `f8dd6c4f2209e09b542f7b4b828f642169c368b0`.
+- **Подпись:** издательский RSA-3072 / SHA-256; проверена по публичному ключу существующего канала. Закрытый ключ не публиковался.
+- **PR:** [#11](https://github.com/jonhspoky2/bridge-studio-updates/pull/11); merge `8d658a94e1d20a5e7990f5065a3ea63b328441db`.
+- **CI:** [v0.21 Gameplay/Play/Export](https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41759348496) success; [main CI](https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41759793024) success.
+- **Релиз:** [верификация подписанного патча](https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41760013054) и [GitHub Pages deployment](https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41760013090) success.
+- **Новые механики:** именованные сигналы между графами; сравнение счётчиков `>=`, `=`, `<=`; компонент «Только граф» для двери; готовый пример «3 нажатия E → ворота → сигнал → +10 монет», добавляемый в текущую сцену. Поддерживается .rwscene, Play и HTML.
+- **Платформа Windows:** реальная установка и GPU smoke-test в `Bridge.exe` на ПК пользователя ещё не подтверждены.
+- **Весь проект:** десять больших направлений в [SUBPROJECTS.md](SUBPROJECTS.md); следующий релиз v0.22 — Game Systems & Kits / reusable game mechanics.
+
 ## Актуальный выпуск: v0.19.4 — Slow Slope Sliding (опубликован)
 
 - Подписанный патч: `updates/v0.19.4/studio.html`, **356 950 байт**, SHA-256 `bec59a3d731988418ce7f6f65e14b6b60be6e1e538a50aca907963d4417d57db`.
