@@ -1,6 +1,19 @@
 # Bridge Studio — текущее состояние
 
-## Актуальный выпуск: v0.22.0 — Game Systems & Quests (подписан и опубликован)
+## Актуальный выпуск: v0.22.1 — Quest Interaction & Manual Coin Hotfix (подписан и опубликован)
+
+- **Причина:** после v0.22.0 пользователь показал Quest 0/3 при автоматическом сборе монет рядом с персонажем; E мог выбрать монету вместо цели квеста.
+- **Исправления:** монеты / Pickup по умолчанию требуют E или клика, но касание можно выбрать отдельно; приоритет квестового объекта, HUD [E] с названием цели и счётчиком задания, без дублирования interact-графов; сохранение подбора исправлено.
+- **Манифест:** `updates/manifest.txt` → `0.22.1`, коммит активации `798999810745d176270c8eb4adefb2c6ed65f700`.
+- **Payload:** `updates/v0.22.1/studio.html`, 415 175 байт, SHA-256 `2894ca890af0be9cb0cadbb66a58ef468b5c052ce9e8fedceac46dd1072ba212`, Git blob `f00e06e58b2dc9484e2e2857c5b7b2806868f5b4`.
+- **Издательская подпись:** RSA-3072 / PKCS#1v1.5 / SHA-256, проверена по тому же ключу; приватный ключ не опубликован.
+- **PR:** [#15](https://github.com/jonhspoky2/bridge-studio-updates/pull/15), merge `d77e2d74e9918a3664bce04429da000d1c068c09`.
+- **Проверка:** [feature CI](https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41768438930) success; [повторный main CI](https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41768876915) success; [подпись активного канала](https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41769263536) success; [GitHub Pages](https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41769262732) success.
+- **Регрессия:** Node + Chromium Play и standalone HTML проверяли монету у Spawn и квестовую кнопку одновременно, три E → 3/3, четвёртое E → монета, один graph event, Q → однократная награда, localStorage restore.
+- **Windows:** установка именно v0.22.1 в Bridge.exe и аппаратный GPU ещё не проверены пользователем.
+- **Следующее:** v0.22.2 Game Systems — Use/Equip, квестовые цепочки и HUD; после этого v0.23 Graphics/Asset Studio.
+
+## Предыдущий выпуск: v0.22.0 — Game Systems & Quests (подписан и опубликован)
 
 - **Манифест:** `updates/manifest.txt`, версия `0.22.0`, коммит активации `e7f0c581b60bd4279dbe60f5c98073600f77a162`.
 - **HTML:** `updates/v0.22.0/studio.html`, 410 488 байт, SHA-256 `b20b8e0d6b966a6845b8d5177b2f329848ab4b84de69ff582d35e9845d997182`, Git blob `beceb803f7f74f361d128b7d291b1d35a6a6c113`.
