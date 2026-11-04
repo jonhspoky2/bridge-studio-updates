@@ -55,14 +55,29 @@ function sampleHeight(t,x,z){
  }
  return null;
 }
-/**
- * Move the player's feet across the heightfield without tunneling into edited slopes.
- * A grounded walker can climb at most 0.45 world units per horizontal substep;
- * a player in the air cannot enter terrain higher than their feet.
- * The returned y is only stepped on walkable slopes; gravity/landings remain
- * the responsibility of the game runtime.
- */
-function walkHeightfield(t,x,z,y,dx,dz,followingTerrain,blocked){
+
+/* Exact triangle gradients: no averaging that could hide an impassable cliff. */
+function sampleSurface(t,x,z){
+ if(!t||!Array.isArray(t.chunks)||!finite(x)||!finite(z))return null;
+ for(var n=0;n<t.chunks.length;n++){
+  var c=t.chunks[n],rx=(x-c.x)/c.step,rz=(z-c.z)/c.step;
+  if(rx<-EPS||rz<-EPS||rx>c.segments+EPS||rz>c.segments+EPS)continue;
+  rx=Math.max(0,Math.min(c.segments,rx));rz=Math.max(0,Math.min(c.segments,rz));
+  var ix=Math.min(c.segments-1,Math.floor(rx)),iz=Math.min(c.segments-1,Math.floor(rz));
+  var u=rx-ix,v=rz-iz,side=c.segments+1,k=iz*side+ix;
+  var a=c.heights[k],b=c.heights[k+1],cc=c.heights[k+side],d=c.heights[k+side+1];
+  var height,gx,gz;
+  if(u+v<=1){height=a*(1-u-v)+b*u+cc*v;gx=(b-a)/c.step;gz=(cc-a)/c.step;}
+  else{height=b*(1-v)+cc*(1-u)+d*(u+v-1);gx=(d-cc)/c.step;gz=(d-b)/c.step;}
+  var magnitude=Math.hypot(gx,gz),scale=1/Math.hypot(gx,1,gz);
+  return {height:height,gradientX:gx,gradientZ:gz,
+   normal:[-gx*scale,scale,-gz*scale],slopeDeg:Math.atan(magnitude)*180/Math.PI};
+ }
+ return null;
+}
+function slopeLimit(value){return finite(value)?Math.max(0,Math.min(89,value)):45;}
+/* Horizontal sweep with slope limit, stable contacts and axis sliding. */
+function walkHeightfield(t,x,z,y,dx,dz,followingTerrain,blocked,maxSlopeDeg){
  if(!finite(x)||!finite(z)||!finite(y)||!finite(dx)||!finite(dz))throw Error('Terrain: invalid walking coordinates');
  function obstructed(px,pz,py){return typeof blocked==='function'&&blocked(px,pz,py);}
  if(!t||!Array.isArray(t.chunks)||!t.chunks.length){
@@ -70,19 +85,24 @@ function walkHeightfield(t,x,z,y,dx,dz,followingTerrain,blocked){
   if(!obstructed(x,z+dz,y))z+=dz;
   return {x:x,z:z,y:y};
  }
- var height=sampleHeight(t,x,z);
- var attached=!!followingTerrain&&height!==null&&Math.abs(y-height)<=.35;
+ var height=sampleSurface(t,x,z),limit=slopeLimit(maxSlopeDeg),radians=limit*Math.PI/180;
+ var attached=!!followingTerrain&&height!==null&&height.slopeDeg<=limit+1e-4&&Math.abs(y-height.height)<=.35;
  var segment=Math.max(.05,Math.min(.35,t.chunks[0].step*.35));
  var count=Math.max(1,Math.ceil(Math.max(Math.abs(dx),Math.abs(dz))/segment));
  var sx=dx/count,sz=dz/count,climb=.45;
  function canMove(px,pz){
-  var surface=sampleHeight(t,px,pz);
-  // Do not allow an airborne player to enter a hillside from the side.
-  // On the ground, permit small steps but reject cliffs higher than climb.
-  if(surface!==null&&surface>y+(attached?climb:EPS))return false;
+  var surface=sampleSurface(t,px,pz),rise=surface?surface.height-y:0;
+  if(surface&&rise>(attached?climb:EPS))return false;
+  if(attached&&surface&&rise>EPS){
+   if(surface.slopeDeg>limit+1e-4)return false;
+   var horizontal=Math.hypot(px-x,pz-z);
+   if(rise>horizontal*Math.tan(radians)+EPS)return false;
+  }
   if(obstructed(px,pz,y))return false;
-  if(attached&&surface!==null&&Math.abs(surface-y)<=climb)y=surface;
-  else if(surface===null)attached=false;
+  if(attached&&surface&&Math.abs(rise)<=climb){
+   y=surface.height;
+   if(surface.slopeDeg>limit+1e-4)attached=false;
+  }else if(!surface)attached=false;
   return true;
  }
  for(var i=0;i<count;i++){
@@ -90,6 +110,20 @@ function walkHeightfield(t,x,z,y,dx,dz,followingTerrain,blocked){
   if(canMove(x,z+sz))z+=sz;
  }
  return {x:x,z:z,y:y};
+}
+/* Gravity-driven downhill slide. Never grants uphill movement or cliff teleport. */
+function slideHeightfield(t,x,z,y,speed,dt,blocked,maxSlopeDeg){
+ if(!finite(speed)||!finite(dt)||speed<0||dt<0)throw Error('Terrain: invalid sliding speed');
+ var surface=sampleSurface(t,x,z),limit=slopeLimit(maxSlopeDeg);
+ if(!surface||surface.slopeDeg<=limit+1e-4||Math.abs(y-surface.height)>.2)return {x:x,z:z,y:y,sliding:false};
+ var gradient=Math.hypot(surface.gradientX,surface.gradientZ);
+ if(gradient<EPS)return {x:x,z:z,y:y,sliding:false};
+ var dx=-surface.gradientX/gradient*speed*dt,dz=-surface.gradientZ/gradient*speed*dt;
+ var moved=walkHeightfield(t,x,z,y,dx,dz,false,blocked,limit);
+ var next=sampleSurface(t,moved.x,moved.z);
+ if(next&&next.height<=y+EPS&&y-next.height<=.45)moved.y=next.height;
+ moved.sliding=true;
+ return moved;
 }
 
 function weightAt(chunk,index,channel){return chunk.weights?chunk.weights[index*4+channel]:(channel===0?255:0);}
@@ -191,7 +225,7 @@ function demoSlope(){
  });
  return validate(t);
 }
-var api={validate:validate,sampleHeight:sampleHeight,weightAt:weightAt,walkHeightfield:walkHeightfield,createMeshes:createMeshes,demoSlope:demoSlope};
+var api={validate:validate,sampleHeight:sampleHeight,weightAt:weightAt,walkHeightfield:walkHeightfield,sampleSurface:sampleSurface,slideHeightfield:slideHeightfield,createMeshes:createMeshes,demoSlope:demoSlope};
 root.BridgeTerrainCore=api;
 if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(typeof window==='undefined'?globalThis:window);
