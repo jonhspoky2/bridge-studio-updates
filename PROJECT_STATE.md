@@ -1,6 +1,17 @@
 # Bridge Studio — текущее состояние
 
-## Актуальный выпуск: v0.21.0 — Visual Scripting (подписан и опубликован)
+## Актуальный выпуск: v0.21.1 — UI Foundation 1.0 (подписан и опубликован)
+
+- **Подписанный патч:** `updates/v0.21.1/studio.html`, 386 757 байт, SHA-256 `39883409655715e7c487908b22745ff0666b7470aaea9f625aa6a06abb558edb` (Git blob `4e21503e00b307049319d1a5bba7aca910ec9605`).
+- **Канал обновлений:** `updates/manifest.txt` переключён на `0.21.1`, подписанный коммит `3167b37b4276ec402c5e3e9a0c982cd53f9783b7`. RSA-3072/SHA-256 проверена тем же ключом, что и v0.21.0; приватный ключ отсутствует в GitHub.
+- **Дизайн Astra D-01:** [PR #12](https://github.com/jonhspoky2/bridge-studio-updates/pull/12) — дизайн-система, Inspector, визуальная логика, ассеты, восемь скриншотов и UI-тест; сохранено в main.
+- **Релизный PR:** [#13](https://github.com/jonhspoky2/bridge-studio-updates/pull/13), merge `4c74b9d5c9010c3d53302fa9f04006d436685185`.
+- **Тесты:** [Source/Browser main CI](https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41763670197) — success, включая `tests/design-d01.cjs`, Gameplay, Terrain, Play и WARPGAME HTML.
+- **Подписанный канал и раздача:** [Validate Bridge Studio patch](https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41763989389) и [GitHub Pages](https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41763989357) — success.
+- **Стабильность:** механики v0.21.0, .rwscene, Play/Build, Terrain и автономный HTML сохранены.
+- **Не проверено:** установка патча в реальном Windows Bridge.exe, аппаратный GPU и масштабирование Windows 125–200%. Требуется ручная проверка после обновления.
+
+## Предыдущий выпуск: v0.21.0 — Visual Scripting (подписан и опубликован)
 
 - **Версия канала:** `updates/manifest.txt` = `0.21.0`; коммит переключения `be1a503aa1f62fd5e7c5a24b2188de674a0b199b`.
 - **Payload:** `updates/v0.21.0/studio.html`, 371 401 байт, SHA-256 `3b06b4355f6121fefd6162fb9f417dd7d81c75d3d9da14ce1ed5990f656e9b3b`, Git blob `f8dd6c4f2209e09b542f7b4b828f642169c368b0`.
