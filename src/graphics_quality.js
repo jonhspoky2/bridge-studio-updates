@@ -4,6 +4,7 @@
 var RESOLUTIONS={low:512,balanced:1024,high:2048};
 function finiteRange(v,fallback,low,high){
  if(v===undefined||v===null||v==='')return fallback;
+ if(typeof v!=='number'&&!(typeof v==='string'&&v.trim()!==''))return fallback;
  v=Number(v);return Number.isFinite(v)?Math.max(low,Math.min(high,v)):fallback;
 }
 function config(lighting){
