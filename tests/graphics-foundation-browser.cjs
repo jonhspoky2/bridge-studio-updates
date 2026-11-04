@@ -56,6 +56,8 @@ const {execFileSync}=require('node:child_process'),{chromium}=require('playwrigh
   assert.equal(buildShadow.distance,42,'Build sunlight shadow frustum follows Inspector');
   assert.equal(buildShadow.bias,-.001,'Build uses configured shadow bias');
   assert.equal(await page.locator('#graphicsPreset').inputValue(),'custom','manual shadow tuning switches to custom');
+  await fs.mkdir(path.resolve(__dirname,'screenshots'),{recursive:true});
+  await page.locator('#viewport').screenshot({path:path.resolve(__dirname,'screenshots/graphics-shadow-build.png')});
   const download=page.waitForEvent('download');await page.click('#saveProject');
   const saved=JSON.parse(await fs.readFile(await (await download).path(),'utf8'));
   assert.equal(saved.settings.graphicsPreset,'custom','custom shadow look stored in .rwscene');
@@ -81,6 +83,7 @@ const {execFileSync}=require('node:child_process'),{chromium}=require('playwrigh
   assert.ok(Buffer.byteLength(exported,'utf8')<=3000000,'3MB WARPGAME budget');
   const game=await context.newPage();await game.goto('http://127.0.0.1:41437/graphics.html');
   await game.waitForFunction(()=>window.__bridgeDebugState,{timeout:25000});
+  await game.screenshot({path:path.resolve(__dirname,'screenshots/graphics-shadow-play.png')});
   const runtime=await game.evaluate(()=>window.__bridgeDebugState());
   assert.equal(runtime.renderExposure,1.15,'standalone exposure matches Play');
   assert.deepEqual(runtime.shadowRender,play.shadowRender,'standalone shadows match Play');
