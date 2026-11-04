@@ -25,18 +25,14 @@ const {execFileSync}=require('node:child_process'),{chromium}=require('playwrigh
     {id:'floor',name:'Ground',type:'ground',position:[0,-.5,0],rotation:[0,0,0],scale:[16,1,16],color:'#57827d',solid:true,action:'none',value:0},
     {id:'spawn',name:'Spawn',type:'spawn',position:[0,0,0],rotation:[0,0,0],scale:[1,1,1],color:'#66e8ca',solid:false,action:'none',value:0},
     {id:'near_coin',name:'Legacy coin',type:'coin',position:[0,1,0],rotation:[0,0,0],scale:[1,1,1],color:'#ffe083',solid:false,action:'collect',value:1}
-   ],ui:[],scripts:[],graphs:[],items:[]};
+   ],ui:[],scripts:[],graphs:[{id:'coin-once',name:'Coin E callback once',event:'interact',source:'near_coin',enabled:true,
+    nodes:[{id:'bonus',type:'coins',amount:3,x:300,y:100}],links:[{from:'start',to:'bonus',port:'next'}]}],items:[]};
   await page.locator('#projectInput').setInputFiles({name:'interaction.rwscene',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(doc))});
   await page.waitForFunction(()=>window.__bridgeQA().project.name==='E Interaction Regression');
   await page.click('[data-tab="world"]');
   await page.locator('#objectList .listbtn').filter({hasText:'Legacy coin'}).click();
   assert.equal(await page.locator('select[data-prop="actionActivation"]').inputValue(),'interact','old coin defaults to E');
   await page.click('[data-tab="ui"]');await page.click('#makeQuestDemo');
-  await page.evaluate(()=>{
-   const p=window.__bridgeQA().project;
-   p.graphs.push({id:'coin-once',name:'Coin E callback once',event:'interact',source:'near_coin',enabled:true,
-    nodes:[{id:'bonus',type:'coins',amount:3,x:300,y:100}],links:[{from:'start',to:'bonus',port:'next'}]});
-  });
   const original=await page.evaluate(()=>window.__bridgeQA().project);
   const savedDownload=page.waitForEvent('download');await page.click('#saveProject');
   const saved=JSON.parse(await fs.readFile(await (await savedDownload).path(),'utf8'));
