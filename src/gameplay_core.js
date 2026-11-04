@@ -114,7 +114,7 @@
   }
   function activate(id,mode,time,repeated){var def=map[id];if(!def)return;time=Number(time)||0;
    allComponents(def).forEach(function(c,i){var key=id+':'+i,delay=num(c.cooldown,900,0,60000),next=cooldowns[key]||-1;
-    var activation=c.activation||(c.type==='door'||c.type==='npc'||c.type==='teleporter'?'interact':'touch');if(activation!==mode)return;
+    var activation=c.activation||(c.type==='door'||c.type==='npc'||c.type==='teleporter'||c.type==='pickup'?'interact':'touch');if(activation!==mode)return;
     if(next>time)return;
     if(repeated&&!['damage','heal'].includes(c.type))return;
     if(c.type==='pickup'){
