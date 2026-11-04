@@ -98,26 +98,26 @@ jobs:
           print('Built editor:', len(html.encode('utf-8')), 'bytes')
           PY
 
-      - name: Upload unsigned v0.19.3 build for offline signing
+      - name: Upload unsigned v0.19.4 build for offline signing
         uses: actions/upload-artifact@v4
         with:
-          name: bridge-v0193-candidate-unsigned
+          name: bridge-v0194-candidate-unsigned
           path: /tmp/bridge-terrain-studio.html
           if-no-files-found: error
 
       - name: Stage candidate payload on feature branch (manifest unchanged)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/v0.19.3-slope-physics'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/fix/v0.19.4-slower-early-slope-slide'
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p updates/v0.19.3
-          cp /tmp/bridge-terrain-studio.html updates/v0.19.3/studio.html
+          mkdir -p updates/v0.19.4
+          cp /tmp/bridge-terrain-studio.html updates/v0.19.4/studio.html
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add updates/v0.19.3/studio.html
+          git add updates/v0.19.4/studio.html
           if ! git diff --cached --quiet; then
-            git commit -m 'Stage unsigned v0.19.3 editor payload (manifest stays 0.19.2)'
-            git push origin HEAD:feature/v0.19.3-slope-physics
+            git commit -m 'Stage unsigned v0.19.4 editor payload (manifest stays 0.19.3)'
+            git push origin HEAD:fix/v0.19.4-slower-early-slope-slide
           fi
 
   browser:

@@ -54,4 +54,15 @@ for(const dt of [1/20,1/30,1/60,1/144]){
  const p=core.walkHeightfield(t,-1,0,core.sampleHeight(t,-1,0),2,0,true,null,45);
  almost(p.x,1,'walk across seam');
 }
+{
+ const below=plane(37),belowY=core.sampleHeight(below,-3,0);
+ assert.equal(core.slideHeightfield(below,-3,0,belowY,1.8,1/60,null,38).sliding,false,'37 deg below new slide threshold');
+ const above=plane(40),aboveY=core.sampleHeight(above,-3,0);
+ const result=core.slideHeightfield(above,-3,0,aboveY,1.8,1/60,null,38);
+ assert.ok(result.sliding&&result.x< -3,'40 deg starts slipping 7 deg earlier');
+ assert.ok(-3-result.x<=1.8/60+1e-6,'slide velocity limited to 1.8 world units per second');
+}
+const runtime=require('node:fs').readFileSync(require('node:path').join(__dirname,'../src/game_runtime.js'),'utf8');
+assert.match(runtime,/slideSlopeDeg=Math\.max\(0,maxWalkableSlopeDeg-7\)/,'7 degree earlier trigger');
+assert.match(runtime,/slideSpeed=Math\.min\(1\.8,slideSpeed\+2\.8\*excess\*dt\)/,'reduced slide cap and acceleration');
 console.log('v0.19.3 slope: triangle angles, 45-degree limit, sliding, FPS, blockers, custom limit, seams passed');
