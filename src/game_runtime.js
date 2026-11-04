@@ -25,15 +25,24 @@ function loadProgress(){
   if(!saved||saved.version!==1||typeof saved!=='object')return false;
   restoring=true;
   var number=function(v,max){return typeof v==='number'&&Number.isFinite(v)?Math.max(0,Math.min(max,Math.floor(v))):0;};
-  state.coins=number(saved.coins,1000000000);state.collected=number(saved.collected,requiredCoins);
+  state.coins=number(saved.coins,1000000000);
   economy.restore(saved.inventory);quests.restore(saved.quests);
-  var valid=new Set(gameObjects.map(function(q){return q.def.id;}));
+  var byId=new Map(gameObjects.map(function(q){return [q.def.id,q];}));
+  // Restore only pickups that still exist in this version of the scene.
+  // An arbitrary componentPicked ID must never hide a door, spawn or console.
   (Array.isArray(saved.picked)?saved.picked:[]).slice(0,2000).forEach(function(id){
-   if(!valid.has(id))return;var q=objectById(id);if(q&&q.def.action==='collect')q.mesh.visible=false;
+   var q=byId.get(id);if(q&&q.def.action==='collect')q.mesh.visible=false;
   });
   (Array.isArray(saved.componentPicked)?saved.componentPicked:[]).slice(0,2000).forEach(function(id){
-   if(!valid.has(id))return;gameplay.state.picked[id]=true;var q=objectById(id);if(q)q.mesh.visible=false;
+   var q=byId.get(id);if(!q||!(q.def.components||[]).some(function(c){return c.type==='pickup';}))return;
+   gameplay.state.picked[id]=true;q.mesh.visible=false;
   });
+  // A saved counter may be stale, duplicated or out of range. When the save
+  // contains pickup IDs, derive it from the actual scene rather than trusting
+  // an unrelated counter; retain legacy counter-only saves for compatibility.
+  state.collected=Array.isArray(saved.picked)?
+   gameObjects.filter(function(q){return q.def.action==='collect'&&!q.mesh.visible;}).length:
+   number(saved.collected,requiredCoins);
   restoring=false;return true;
  }catch(e){restoring=false;saveAvailable=false;return false;}
 }
@@ -191,7 +200,7 @@ window.addEventListener('keydown',function(e){var k=gameKey(e);keys[k]=true;if([
 window.addEventListener('keyup',function(e){keys[gameKey(e)]=false;});
 window.addEventListener('blur',function(){keys={};});
 window.addEventListener('message',function(e){if(e.source!==window.parent||!e.data)return;var d=e.data;if(d.bridgeInput==='key'&&typeof d.key==='string'){keys[d.key]=!!d.down;}else if(d.bridgeInput==='clear'){keys={};}});
-window.__bridgeDebugState=function(){return {position:[player.position.x,player.position.y,player.position.z],keys:Object.keys(keys).filter(function(k){return !!keys[k];}),grounded:grounded,yaw:yaw,playerYaw:player.rotation.y,playerForward:[-Math.sin(player.rotation.y),-Math.cos(player.rotation.y)],coins:state.coins,collected:state.collected,environment:environment,renderExposure:renderer.toneMappingExposure,sunPosition:[sun.position.x,sun.position.y,sun.position.z],health:gameplay&&gameplay.state.health,checkpointId:gameplay&&gameplay.state.checkpointId,flags:gameplay&&gameplay.state.flags,counters:gameplay&&gameplay.state.counters,graphTrace:gameplay&&gameplay.trace(),firstPerson:firstPerson,doorStates:gameObjects.filter(function(q){return !!q.doorOrigin;}).map(function(q){return {id:q.def.id,open:q.doorOpen,y:q.mesh.position.y};}),inventory:economy&&economy.snapshot(),quests:quests&&quests.snapshot(),saveEnabled:saveEnabled,saveAvailable:saveAvailable,overlay:uiOverlay&&uiOverlay.id,firstDt:firstDelta,minTerrainClearance:minTerrainClearance===Infinity?null:minTerrainClearance,terrainChunks:terrainMeshes.length,terrainY:window.BridgeTerrainCore.sampleHeight(doc.terrain,player.position.x,player.position.z),terrainSlope:((window.BridgeTerrainCore.sampleSurface(doc.terrain,player.position.x,player.position.z)||{}).slopeDeg??null),maxWalkableSlopeDeg:maxWalkableSlopeDeg,slideSlopeDeg:slideSlopeDeg,slideSpeed:slideSpeed,objects:gameObjects.length,glbInstances:gameObjects.filter(function(q){return q.def.type==='glb';}).length,embeddedAssets:(doc.assets||[]).length,embeddedTextures:(doc.textures||[]).length,interactionTarget:(nearestInteraction()||{def:{}}).def.id||null};};
+window.__bridgeDebugState=function(){return {position:[player.position.x,player.position.y,player.position.z],keys:Object.keys(keys).filter(function(k){return !!keys[k];}),grounded:grounded,yaw:yaw,playerYaw:player.rotation.y,playerForward:[-Math.sin(player.rotation.y),-Math.cos(player.rotation.y)],coins:state.coins,collected:state.collected,environment:environment,renderExposure:renderer.toneMappingExposure,sunPosition:[sun.position.x,sun.position.y,sun.position.z],health:gameplay&&gameplay.state.health,checkpointId:gameplay&&gameplay.state.checkpointId,flags:gameplay&&gameplay.state.flags,counters:gameplay&&gameplay.state.counters,graphTrace:gameplay&&gameplay.trace(),firstPerson:firstPerson,doorStates:gameObjects.filter(function(q){return !!q.doorOrigin;}).map(function(q){return {id:q.def.id,open:q.doorOpen,y:q.mesh.position.y};}),inventory:economy&&economy.snapshot(),quests:quests&&quests.snapshot(),pickedComponentIds:gameplay&&Object.keys(gameplay.state.picked).filter(function(id){return !!gameplay.state.picked[id];}),saveEnabled:saveEnabled,saveAvailable:saveAvailable,overlay:uiOverlay&&uiOverlay.id,firstDt:firstDelta,minTerrainClearance:minTerrainClearance===Infinity?null:minTerrainClearance,terrainChunks:terrainMeshes.length,terrainY:window.BridgeTerrainCore.sampleHeight(doc.terrain,player.position.x,player.position.z),terrainSlope:((window.BridgeTerrainCore.sampleSurface(doc.terrain,player.position.x,player.position.z)||{}).slopeDeg??null),maxWalkableSlopeDeg:maxWalkableSlopeDeg,slideSlopeDeg:slideSlopeDeg,slideSpeed:slideSpeed,objects:gameObjects.length,glbInstances:gameObjects.filter(function(q){return q.def.type==='glb';}).length,embeddedAssets:(doc.assets||[]).length,embeddedTextures:(doc.textures||[]).length,interactionTarget:(nearestInteraction()||{def:{}}).def.id||null};};
 window.__bridgeEconomyQA={grantCoins:function(n){api.addCoins(n);return state.coins;},inventory:function(){return economy.snapshot();}};
 function resize(){var w=root.clientWidth,h=root.clientHeight;renderer.setSize(w,h);camera.aspect=w/Math.max(1,h);camera.updateProjectionMatrix();}window.addEventListener('resize',resize);resize();var prev=performance.now(),firstDelta=null;
 var fatalRenderFailure=false;function frame(now){if(fatalRenderFailure)return;requestAnimationFrame(frame);var dt=Math.max(0,Math.min(.05,(now-prev)/1000));if(firstDelta===null)firstDelta=dt;prev=now;elapsed+=dt;
