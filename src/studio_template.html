@@ -90,7 +90,139 @@
 .terrain-material.selected,.terrain-mode.selected{border-color:#6ee7c2!important;box-shadow:0 0 0 1px #6ee7c277;background:#20504a;color:white}
 #terrainPaintControls .hint{line-height:1.4}
 </style>
-<header><div class="brand"><div class="logo">R↗W</div><div><b>BRIDGE STUDIO</b><small>GAME MAKER 0.21.0</small></div></div><input id="projectName" value="Coin Rush" title="Название проекта"><span class="sep"></span><button id="newProject" title="Новый проект">Новый</button><button id="loadProject">Открыть</button><button id="saveProject" title="Скачать проект .rwscene">Сохранить ↓</button><button id="saveNative" title="Сохранить проект в выбранный файл (при поддержке браузера)">В файл…</button><span id="dirtyMark" title="Изменения с момента последнего ручного сохранения">✓ Сохранено</span><button id="btnCheck" title="Проверить ошибки, модели и скрипты">✓ Проверить</button><button id="restoreDraft" title="Открыть историю резервных копий">⟲ Копии</button><div class="spacer"></div><button id="btnUpdates" class="mini hidden" title="Патчи Bridge Studio">↻ Патчи</button><button id="btnStop" class="hidden">■ Стоп</button><button id="btnPlay" class="play">▶ PLAY</button><select id="exportProfile" title="Профиль экспорта" style="width:145px"><option value="warpgame">WARPGAME · 3 МБ</option><option value="standalone">Standalone · CDN</option><option value="offline">Standalone · OFFLINE</option></select><button id="btnBuild" class="main">↓ BUILD HTML</button></header>
+<style>
+/* Bridge Studio UI Foundation 1.0 — editor surfaces only. */
+:root {
+  --ui-bg:#09111d; --ui-surface:#101d2c; --ui-raised:#17283b; --ui-input:#0b1624;
+  --ui-text:#e7eff9; --ui-muted:#a3b5ca; --ui-subtle:#8299b3;
+  --ui-accent:#5ad8d2; --ui-blue:#79aefe; --ui-warning:#f4b969; --ui-danger:#ff9da1;
+  --ui-event:#5ad8d2; --ui-condition:#f4b969; --ui-action:#79aefe; --ui-signal:#bd9cfa;
+  --ui-border:#2b4058; --ui-divider:#22354b; --ui-hover:#20364e; --ui-selected:#163e50;
+  --ui-active:#28465f; --ui-disabled:.46; --ui-focus:#97e9ff;
+  --ui-space-1:4px; --ui-space-2:8px; --ui-space-3:12px; --ui-space-4:16px; --ui-space-5:24px;
+  --ui-radius-sm:5px; --ui-radius:8px; --ui-radius-lg:12px;
+  --ui-control:32px; --ui-shadow:0 8px 24px #02091338; --ui-shadow-float:0 14px 40px #02091366;
+  --ui-header:104px; --ui-left:256px; --ui-right:288px;
+  --b:var(--ui-bg); --panel:var(--ui-surface); --p2:var(--ui-raised); --line:var(--ui-divider);
+  --txt:var(--ui-text); --muted:var(--ui-muted); --accent:var(--ui-accent); --gold:var(--ui-warning);
+}
+body{background:var(--ui-bg);font-family:"Segoe UI",system-ui,sans-serif}
+button,input,select,textarea{border-radius:var(--ui-radius-sm);font-size:12px}
+button{min-height:var(--ui-control);padding:6px 10px;border-color:var(--ui-border);background:var(--ui-raised);color:var(--ui-text);transition:background .12s,border-color .12s}
+button:hover{background:var(--ui-hover);border-color:#587697}
+button:active{background:var(--ui-active)}
+button:disabled{opacity:var(--ui-disabled)}
+button:disabled:hover{background:var(--ui-raised);border-color:var(--ui-border)}
+:where(button,input,select,textarea,[tabindex]):focus-visible{outline:2px solid var(--ui-focus);outline-offset:3px}
+input,select,textarea{background:var(--ui-input);border-color:var(--ui-border);padding:7px 8px;min-height:var(--ui-control)}
+input[type=checkbox]{min-height:0;width:15px;height:15px;accent-color:var(--ui-accent)}
+input[type=range]{padding:0;min-height:20px;accent-color:var(--ui-accent)}
+button.main{background:var(--ui-accent);color:#09252d;font-weight:700;border:1px solid var(--ui-accent)}
+button.main:hover{background:#89e9e2}
+button.play{background:#153e3b;color:#94efcd;border:1px solid #397c6d}
+button.play:hover{background:#205a4d}
+#btnStop{background:#432c38;border-color:#875363;color:#ffc2ca}
+body>header{height:var(--ui-header);padding:0;display:flex;flex-direction:column;align-items:stretch;gap:0;background:var(--ui-surface);box-shadow:var(--ui-shadow);position:relative;z-index:30}
+.header-row{height:54px;display:flex;align-items:center;gap:8px;padding:0 16px;min-width:0}
+.header-tools{height:50px;border-top:1px solid var(--ui-divider);background:#0e1a29}
+.brand{min-width:210px;gap:10px}
+.logo{display:grid;place-items:center;width:30px;height:30px;border:1px solid #37677b;border-radius:8px;font-size:21px;background:#153044;color:var(--ui-accent)}
+.brand b{font-size:13px;letter-spacing:.07em}.brand small{font-size:9px;color:var(--ui-subtle);letter-spacing:.12em}
+#projectName{width:190px;background:#0c1826}#dirtyMark{font-size:11px}
+.header-caption{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ui-subtle)}
+header .sep{height:22px;margin:0 4px}header .spacer{flex:1}
+#exportProfile{min-width:168px}#btnBuild{min-width:120px}
+.workspace{grid-template-columns:var(--ui-left) minmax(300px,1fr) var(--ui-right);height:calc(100dvh - var(--ui-header));min-height:0}
+.workspace>.panel{padding:12px;scrollbar-width:thin;scrollbar-color:#3a526d transparent}
+.workspace>.right{background:#101e2e}
+h3,.inspector-divider{font-size:10px;font-weight:650;letter-spacing:.11em;color:var(--ui-subtle)}
+h3{margin-top:20px}.hint,p,label{color:var(--ui-muted)}
+.tabrow{gap:2px;background:var(--ui-bg);border:1px solid var(--ui-divider);border-radius:var(--ui-radius);padding:3px}
+.tabrow button{font-size:10px;padding:6px 2px;min-height:32px;border-radius:4px}
+.tabrow button.active{color:var(--ui-accent);background:#1b3445;box-shadow:inset 0 -2px var(--ui-accent)}
+.listbtn{padding:8px 10px;border-color:transparent;background:#122234;border-radius:5px;min-height:38px}
+.listbtn span{max-width:none;flex:1}.listbtn small{flex-shrink:0;color:var(--ui-subtle)}
+.listbtn.active{background:var(--ui-selected);border-color:#3d7a90;box-shadow:inset 3px 0 var(--ui-accent)}
+.listbtn:hover{background:var(--ui-hover)}
+.group-heading{background:#1a2b40;color:var(--ui-text);border-color:var(--ui-border)}
+.empty{background:#0d1a29;border-color:var(--ui-border);color:var(--ui-muted);line-height:1.7}
+#rightTitle{font-size:15px;line-height:1.5;overflow-wrap:anywhere;margin:10px 0 16px}
+#inspector label{line-height:1.5}#inspector input:not([type=checkbox]):not([type=color]),#inspector select{width:100%}
+.three{gap:6px}.three input{font-variant-numeric:tabular-nums;padding:7px 5px}
+.inspector-divider{padding-top:16px;margin-top:20px;color:var(--ui-accent)}
+.component-card{background:#132439;border:1px solid var(--ui-border);border-radius:var(--ui-radius);padding:10px;box-shadow:var(--ui-shadow)}
+.component-title{padding-bottom:8px;border-bottom:1px solid var(--ui-divider);margin-bottom:8px}
+.component-card .component-title label{color:var(--ui-text)}.component-card .component-title input{width:15px}
+.status{background:#102c3b;color:#c5e4ee;border-radius:var(--ui-radius);border-left:3px solid #4e9eae}
+.footer{color:var(--ui-subtle)}.warn{color:var(--ui-warning)}.good{color:#8ee0b8}
+#editorToolbar{top:12px;background:#0e1e2ef5;box-shadow:var(--ui-shadow-float);padding:5px;border-radius:var(--ui-radius);border-color:var(--ui-border);gap:4px}
+#editorToolbar .tool{padding:7px 9px;min-height:32px}
+#editorToolbar .tool.selected{background:var(--ui-selected);color:var(--ui-accent);border-color:#498c9d}
+#devConsole{top:auto;bottom:12px;left:12px;border-color:#2e5367;font-size:10px}
+#emptyHint{bottom:52px;max-width:calc(100% - 32px);font-size:10px;padding:8px 10px}
+.asset-card{background:#122338;border-color:var(--ui-border);gap:10px;padding:10px;border-radius:var(--ui-radius);box-shadow:var(--ui-shadow)}
+.asset-card:hover{border-color:#4e718f}.asset-thumb{flex-basis:54px;height:54px;background:#18364b;border-color:#365971}
+.asset-content b,.prefab-card b{font-size:12px;white-space:normal;overflow-wrap:anywhere}
+.asset-content small{color:var(--ui-subtle)}.asset-controls{flex-wrap:wrap;gap:4px}.asset-controls button{min-height:28px}
+.prefab-card{margin:6px 0;padding:8px;border:1px solid var(--ui-border);border-radius:var(--ui-radius-sm);background:#122338;flex-wrap:wrap}
+.prefab-card b{flex-basis:100%}.prefab-card button{min-height:28px}
+#logicCanvas{top:var(--ui-header);left:var(--ui-left);background:var(--ui-bg)}
+#logicCanvasHeader{min-height:64px;padding:12px 20px;gap:16px;background:var(--ui-surface);border-color:var(--ui-border)}
+#logicCanvasHeader strong{font-size:15px;max-width:40%;overflow-wrap:anywhere}
+#logicCanvasHeader span{font-size:12px;line-height:1.5;color:var(--ui-muted)}
+#logicControls{padding:12px 16px;gap:10px;background:#111e2e;border-color:var(--ui-border)}
+#logicControls label{font-size:11px;color:var(--ui-subtle)}
+#logicControls [hidden]{display:none!important}
+#logicControls input{display:block;margin-top:5px}
+#logicGraphList .listbtn span{white-space:normal;overflow-wrap:anywhere}
+#editorToolbar{flex-wrap:wrap;justify-content:center}
+#logicControls select{max-width:210px;min-width:145px;font-size:12px}
+#logicDeleteGraph{margin-left:auto;color:var(--ui-danger)}
+#logicGraphScroller{position:relative;min-width:0;background-color:#0b1624;background-image:radial-gradient(#31465e 1px,transparent 1px);background-size:20px 20px;scrollbar-color:#415c78 #0b1624}
+#logicGraphSurface{margin:16px}
+.logic-node{--node-color:var(--ui-action);width:190px;height:112px;padding:0;border:1px solid #385472;border-top:3px solid var(--node-color);border-radius:var(--ui-radius);background:#17283d;box-shadow:0 6px 16px #02081466;gap:0}
+.logic-node.logic-condition{--node-color:var(--ui-condition);height:168px}
+.logic-node.logic-signal{--node-color:var(--ui-signal)}
+.logic-node.logic-event{--node-color:var(--ui-event);background:#143039;border-color:#32696d;border-top-color:var(--node-color);cursor:default}
+.logic-node.selected{border-color:var(--node-color);box-shadow:0 0 0 2px #9cbedf45,0 10px 22px #02081480}
+.logic-node .logic-category{position:absolute;top:7px;left:12px;font-size:9px;font-weight:700;letter-spacing:.13em;color:var(--node-color)}
+.logic-node strong{position:absolute;top:25px;left:12px;right:10px;font-size:12px;line-height:15px;letter-spacing:0;font-weight:600;max-height:30px;overflow:hidden}
+.logic-node small,#logicStartName{position:absolute;top:59px;left:12px;right:10px;font-size:11px;line-height:16px;color:var(--ui-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.logic-node .in-port{position:absolute;top:34px;left:-12px;width:24px;height:24px;min-height:24px;border:5px solid #17283d;border-radius:50%;background:var(--node-color);padding:0;font-size:0;z-index:2}
+.logic-node .in-port:hover{background:#fff}
+.logic-node [data-logic-out]{position:absolute;right:-1px;top:76px;min-height:24px;height:24px;padding:2px 15px 2px 8px;border:0;background:transparent;color:var(--node-color);font-size:11px;text-align:right;border-radius:4px}
+.logic-node [data-logic-out]:after{content:"";position:absolute;right:-6px;top:6px;width:12px;height:12px;border:2px solid var(--node-color);border-radius:50%;background:#17283d}
+.logic-node [data-logic-out="yes"]{top:101px}.logic-node [data-logic-out="no"]{top:130px}
+.logic-node [data-logic-out]:hover{background:#ffffff10}
+.logic-node [data-logic-out].pending{background:var(--node-color);color:#0b1723}
+.logic-node [data-logic-out].pending:after{background:var(--node-color)}
+.logic-node.has-warning{border-style:dashed}
+.logic-node.has-warning small{color:var(--ui-warning)}
+.logic-wire{stroke:var(--ui-blue);stroke-width:2;opacity:.65;stroke-linecap:round}
+.logic-wire.wire-event{stroke:var(--ui-event)}.logic-wire.wire-signal{stroke:var(--ui-signal)}
+.logic-wire.branch-yes,.logic-wire.branch-no{stroke:var(--ui-condition)}
+.logic-wire.branch-no{stroke-dasharray:5 5}
+.logic-wire.selected{opacity:1;stroke-width:3}
+#logicNodeInspector{width:260px;min-width:240px;background:var(--ui-surface);padding:16px;border-color:var(--ui-border)}
+#logicNodeInspector h3{color:var(--ui-subtle);margin:0 0 16px}
+#logicPropertyFields>strong{display:block;padding:10px;border:1px solid var(--ui-border);border-radius:6px;background:var(--ui-raised);color:var(--ui-text);font-size:13px}
+#logicNodeInspector label{font-size:12px;margin:12px 0}
+#logicNodeInspector input:not([type=checkbox]),#logicNodeInspector select{margin-top:6px}
+#logicNodeInspector .inlinecheck{display:flex}
+#logicNodeInspector #logicRemoveNode{color:var(--ui-danger)}
+#logicGraphList .listbtn{font-size:12px;padding:10px}
+#logicEmpty{display:none;position:absolute;top:80px;left:40px;max-width:330px;padding:24px;background:var(--ui-surface);border:1px dashed #41627d;border-radius:12px;line-height:1.8;color:var(--ui-muted)}
+#logicCanvas[data-empty="true"] #logicEmpty{display:block}
+#logicCanvas[data-empty="true"] .logic-event{display:none}
+.logic-legend{display:flex;flex-wrap:wrap;gap:12px;font-size:10px;margin:12px 0;color:var(--ui-muted)}
+.logic-legend span:before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--legend-color);margin-right:5px}
+#patchNotesDialog,#patchSaveDialog{background:var(--ui-surface);border-color:#45647e;box-shadow:var(--ui-shadow-float)}
+@media(max-width:1400px){:root{--ui-left:236px;--ui-right:264px}.brand{min-width:192px}#projectName{width:168px}#logicNodeInspector{width:240px;min-width:220px}#logicControls{gap:8px}}
+@media(max-width:1100px){:root{--ui-left:210px;--ui-right:240px}.header-row{gap:5px;padding:0 10px}.brand{min-width:160px}#projectName{width:130px}header button{padding:6px}.header-caption{display:none}}
+@media(max-width:750px){:root{--ui-header:154px}.header-row{height:auto;min-height:54px;flex-wrap:wrap;padding:8px}body>header{height:auto;min-height:var(--ui-header)}.workspace{height:auto;display:flex}#logicCanvas{position:fixed;left:0;top:var(--ui-header)}#logicNodeInspector{width:185px;min-width:185px}#logicCanvasHeader span{display:none}}
+@media(prefers-reduced-motion:reduce){button{transition:none}}
+</style>
+<header><div class="header-row"><div class="brand"><div class="logo" aria-hidden="true">B</div><div><b>BRIDGE STUDIO</b><small>GAME MAKER 0.21.0</small></div></div><input aria-label="Название проекта" id="projectName" value="Coin Rush" title="Название проекта"><span class="sep"></span><button id="newProject" title="Новый проект">Новый</button><button id="loadProject">Открыть</button><button id="saveProject" title="Скачать проект .rwscene">Сохранить ↓</button><button id="saveNative" title="Сохранить проект в выбранный файл (при поддержке браузера)">В файл…</button><span id="dirtyMark" title="Изменения с момента последнего ручного сохранения">✓ Сохранено</span></div><div class="header-row header-tools"><span class="header-caption">Рабочее пространство</span><span class="sep"></span><button id="btnCheck" title="Проверить ошибки, модели и скрипты">✓ Проверить</button><button id="restoreDraft" title="Открыть историю резервных копий">⟲ Копии</button><div class="spacer"></div><button id="btnUpdates" class="mini hidden" title="Патчи Bridge Studio">↻ Патчи</button><button id="btnStop" class="hidden">■ Стоп</button><button id="btnPlay" class="play">▶ PLAY</button><select aria-label="Профиль экспорта" id="exportProfile" title="Профиль экспорта" style="width:145px"><option value="warpgame">WARPGAME · 3 МБ</option><option value="standalone">Standalone · CDN</option><option value="offline">Standalone · OFFLINE</option></select><button id="btnBuild" class="main">↓ BUILD HTML</button></div></header>
 
 <div id="patchNotesBackdrop" hidden>
 <section id="patchNotesDialog" role="dialog" aria-modal="true" aria-labelledby="patchNotesTitle" tabindex="-1">
@@ -147,13 +279,13 @@
 <p id="terrainBrushHint" class="hint">Terrain: левую кнопку держи для мазка; средняя/правая — камера. Escape — отмена мазка.</p>
 </div></div></div>
 <div id="uiTab" class="hidden"><h3>ИНТЕРФЕЙС ИГРЫ</h3><p class="hint">Позиция UI задаётся в процентах от ширины/высоты игрового окна. В режиме Play кнопки выполняют действия.</p><div class="twocol"><button id="addLabel">+ Текст</button><button id="addButton">+ Кнопка</button><button id="addPanel">+ Панель</button><button id="addProgress">+ HP-полоска</button></div><p class="hint">Перетаскивай элементы мышью в 3D-окне; настрой размеры, цвета, действия и привязки справа.</p><button id="addUiDemo" class="full">+ Добавить HUD, инвентарь и магазин</button><div class="section" id="uiList"></div><div class="section" id="catalogSection"><h3>КАТАЛОГ МАГАЗИНА</h3><p class="hint">Предметы сохраняются в проекте и доступны в Play / HTML.</p><button id="addShopItem" class="full">+ Новый предмет</button><div id="shopCatalogEditor"></div></div><div class="section"><h3>ЗВУК ИГРЫ</h3><label class="hint">Громкость эффектов<input id="gameVolume" type="range" min="0" max="1" step="0.05" value="0.35"></label><button id="testAudio" class="full">▶ Проверить звук</button><p class="hint">Встроенные Web Audio эффекты, без внешних файлов. Звук запускается после действия пользователя.</p></div></div>
-<div id="logicTab" class="hidden"><h3>ВИЗУАЛЬНАЯ ЛОГИКА</h3><p class="hint">Событие запускает соединённые блоки. JavaScript не нужен. Выбери граф, добавь блок, соедини выход и вход точками.</p><button id="addLogicGraph" class="full">+ Новый граф</button><button id="makeTimerCounterDemo" class="full" style="margin-top:6px">+ Демо: таймер и счётчик</button><button id="makeUnlockGateDemo" class="full" style="margin-top:6px">+ Демо: три нажатия → открыть ворота</button><div id="logicGraphList" class="section"></div><button id="makeGameplayDemo" class="full" style="margin-top:12px;border-color:#4c9f99;background:#1d4546">▶ Создать Gameplay Lab</button><p class="hint">Gameplay Lab: NPC, монета, кнопка, дверь, урон, чекпоинт, телепорт и движущаяся платформа.</p></div>
+<div id="logicTab" class="hidden"><h3>ВИЗУАЛЬНАЯ ЛОГИКА</h3><p class="hint">Событие запускает соединённые блоки. JavaScript не нужен. Выбери граф, добавь блок, соедини выход и вход точками.</p><button id="addLogicGraph" class="full">+ Новый граф</button><button id="makeTimerCounterDemo" class="full" style="margin-top:6px">+ Демо: таймер и счётчик</button><button id="makeUnlockGateDemo" class="full" style="margin-top:6px">+ Демо: три нажатия → открыть ворота</button><div class="logic-legend" aria-label="Категории узлов"><span style="--legend-color:var(--ui-event)">Event</span><span style="--legend-color:var(--ui-condition)">Condition</span><span style="--legend-color:var(--ui-action)">Action</span><span style="--legend-color:var(--ui-signal)">Signal</span></div><div id="logicGraphList" class="section"></div><button id="makeGameplayDemo" class="full" style="margin-top:12px;border-color:#4c9f99;background:#1d4546">▶ Создать Gameplay Lab</button><p class="hint">Gameplay Lab: NPC, монета, кнопка, дверь, урон, чекпоинт, телепорт и движущаяся платформа.</p></div>
 <div id="scriptsTab" class="hidden"><h3>JAVASCRIPT СОБЫТИЯ</h3><p class="hint">Код выполняется внутри экспортированной игры. API: api.addCoins(n), api.message(text), api.win(), api.teleport(x,y,z), api.setVisible(id,bool).</p><button id="addScript" class="full">+ Создать скрипт</button><div class="section" id="scriptList"></div></div>
 <div class="section"><h3>УПРАВЛЕНИЕ</h3><p class="hint">Кликни по 3D-сцене. W — вперёд, S — назад, A/D — вбок, Q/E — вниз/вверх. Shift — ускорение, ПКМ — осмотр. Esc — выход из управления камерой.</p>
 <label class="ctrl">Скорость камеры: <b id="editorSpeedValue">6.0</b> <input id="editorSpeed" type="range" min="1" max="24" step=".5" value="6"></label>
 <div class="twocol" style="margin-top:8px"><label class="hint">Здоровье игрока<input id="gameHealth" type="number" min="1" max="1000" step="10" value="100" style="width:100%"></label></div><div class="twocol" style="margin-top:8px"><label class="hint">Скорость игрока<input id="gameSpeed" type="number" min="1" max="18" step=".5" value="5" style="width:100%"></label><label class="hint">Сила прыжка<input id="gameJump" type="number" min="3" max="18" step=".5" value="7.6" style="width:100%"></label></div><div class="twocol" style="margin-top:8px"><label class="hint">Макс. угол подъёма (°)<input id="gameSlope" type="number" min="0" max="89" step="1" value="45" style="width:100%"></label></div><p class="hint">Медленное скольжение начинается на 7° раньше предела подъёма (обычно с 38°).</p><p class="hint">Play: WASD — ходьба, Space — прыжок, Shift — бег, V — вид камеры, E — взаимодействие, мышь — поворот камеры. Игра работает и без пользовательских скриптов.</p></div>
 <div class="section"><h3>РЕЗЕРВНЫЕ КОПИИ</h3><button id="snapshotNow" class="full" title="Сделать новый снимок проекта">＋ Создать копию сейчас</button><p class="hint" id="backupState">Копии: каждые 60 секунд при изменениях, максимум 12 снимков.</p><div id="recoveryPanel" hidden></div></div>
-<div class="section"><h3>ПРОЕКТ</h3><div id="projectStats" class="hint">—</div><p class="footer">Проекты .rwscene сохраняют импортированные GLB внутри файла.<br>Экспорт WARPGAME или Standalone HTML использует Three.js r128 с CDN.</p><div id="status" class="status">Готово к работе.</div></div></aside>
+<div class="section"><h3>ПРОЕКТ</h3><div id="projectStats" class="hint">—</div><p class="footer">Проекты .rwscene сохраняют импортированные GLB внутри файла.<br>Экспорт WARPGAME или Standalone HTML использует Three.js r128 с CDN.</p><div id="status" class="status" role="status" aria-live="polite">Готово к работе.</div></div></aside>
 <main id="viewport"><div id="editorToolbar" aria-label="Инструменты 3D">
 <button class="tool selected" data-tool="move" title="Перемещение по осям (G)">↔ <span>Двигать</span></button>
 <button class="tool" data-tool="rotate" title="Поворот мышью (R)">⟳ <span>Вращать</span></button>
@@ -163,7 +295,7 @@
 </div><div id="renderError" hidden></div><div id="renderState" class="render-state">3D запускается…</div><div id="logicCanvas" class="hidden" aria-label="Редактор графов игровой логики">
 <div id="logicCanvasHeader"><strong id="logicActiveTitle">Визуальная логика</strong><span id="logicConnectionHint">Выберите блок и соедините выход с входом</span><button id="logicExit">3D-сцена</button></div>
 <div id="logicControls"><label>Событие <select id="logicEvent"></select></label><label>Источник <select id="logicSource"></select></label><label id="logicTimerSettings" hidden>Интервал (сек.) <input id="logicTimerInterval" type="number" min="0.1" max="3600" step="0.1" value="2" style="width:95px"></label><label id="logicSignalSettings" hidden>Имя сигнала <input id="logicSignalName" type="text" maxlength="40" value="gate_unlocked" style="width:135px"></label><label>Добавить блок <select id="logicNodeType"></select></label><button id="logicAddNode">+ Блок</button><button id="logicDeleteGraph">Удалить граф</button></div>
-<div id="logicContent"><div id="logicGraphScroller"><div id="logicGraphSurface"><svg id="logicWires" viewBox="0 0 1500 900" preserveAspectRatio="none"></svg><div class="logic-node logic-event" data-node="start" style="left:32px;top:200px"><strong>СОБЫТИЕ</strong><span id="logicStartName">Start</span><button data-logic-out="next" data-node-id="start" title="Выход события">● Старт</button></div></div></div><div id="logicNodeInspector"><h3>СВОЙСТВА БЛОКА</h3><div id="logicPropertyFields" class="hint">Выбери блок на схеме.</div><button id="logicDisconnect" class="full">Разорвать входящие связи</button><button id="logicRemoveNode" class="full">Удалить блок</button><hr><label>Имя графа<input id="logicGraphName" style="width:100%"></label><label class="inlinecheck"><input id="logicGraphEnabled" type="checkbox" checked> Граф включён</label></div></div></div>
+<div id="logicContent"><div id="logicGraphScroller"><div id="logicEmpty"><strong>Создай первый граф</strong><br>Нажми «+ Новый граф» слева, выбери событие и добавь действие. Соедини выход события со входом блока.</div><div id="logicGraphSurface"><svg id="logicWires" viewBox="0 0 1500 900" preserveAspectRatio="none"></svg><div class="logic-node logic-event" data-node="start" style="left:32px;top:200px"><span class="logic-category">EVENT</span><strong>Событие</strong><span id="logicStartName">Start</span><button data-logic-out="next" data-node-id="start" title="Выход события">● Старт</button></div></div></div><div id="logicNodeInspector"><h3>СВОЙСТВА БЛОКА</h3><div id="logicPropertyFields" class="hint">Выбери блок на схеме.</div><button id="logicDisconnect" class="full">Разорвать входящие связи</button><button id="logicRemoveNode" class="full">Удалить блок</button><hr><label>Имя графа<input id="logicGraphName" style="width:100%"></label><label class="inlinecheck"><input id="logicGraphEnabled" type="checkbox" checked> Граф включён</label></div></div></div>
 <div id="playDiagnostic" hidden><strong>Play Mode — диагностика</strong><pre id="playDiagnosticText"></pre><button id="playRetry">Повторить Play</button><button id="playClose">Вернуться в редактор</button><button id="playLog">Сохранить отчёт</button></div><div id="devConsole">EDIT · WASD — камера (клик по сцене) · ПКМ — осмотр · Q/E — высота</div><div id="emptyHint">Кликни по сцене → WASD: камера · ПКМ: осмотр · Ctrl+клик: добавить объект · Shift+клик в списке: диапазон<br>ЛКМ по объекту: выбрать и двигать · оси X/Y/Z: точное редактирование · мышь: масштаб колесом · Esc: отключить WASD</div><div id="uiPreview"></div><iframe sandbox="allow-scripts" referrerpolicy="no-referrer" id="playFrame" class="hidden" title="Запущенная игра"></iframe><div id="playBanner" class="hidden">▶ PLAY MODE — вернись в редактор кнопкой «■ Стоп»</div></main>
 <aside class="panel right"><h3>ИНСПЕКТОР</h3><div id="rightTitle">Объект не выбран</div><div id="inspector"></div><div class="section"><h3>ПРОВЕРКА</h3><p class="hint">Сначала Play: пройди игру, собери монеты и доберись до финиша. Затем Build: получишь тот же игровой процесс в одном HTML.</p><div class="rowButtons"><button id="cameraCenter">В центр</button><button id="cameraTop">Сверху</button></div><pre id="auditReport" class="hint" style="margin-top:10px;white-space:pre-wrap;max-height:160px;overflow:auto" aria-live="polite">Проверка пока не запускалась</pre><div id="buildReport" class="hint" style="margin-top:10px">Gameplay: компоненты и графы работают в Play и HTML. WARPGAME: лимит HTML 3 000 000 байт. Standalone: без лимита.</div><p class="hint">История копий хранится в IndexedDB этого браузера. Для переноса между компьютерами сохраняй файл .rwscene.</p></div></aside></div>
 <input id="fileInput" type="file" accept=".glb" multiple><input id="textureInput" type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" multiple><input id="prefabInput" type="file" accept=".rwprefab,.json"><input id="libraryInput" type="file" accept=".rwlib,.json"><input id="projectInput" type="file" accept=".rwscene,.json"><script>
