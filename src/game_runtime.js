@@ -18,6 +18,8 @@ function saveProgress(){
    // Graph flags and doors are part of the game state: a claimed gate quest
    // must not reload into a permanently locked world.
    flags:Object.keys(gameplay.state.flags).filter(function(k){return /^[A-Za-zА-Яа-яЁё_][A-Za-zА-Яа-яЁё0-9_-]{0,39}$/.test(k);}).slice(0,200).reduce(function(out,k){out[k]=gameplay.state.flags[k]===true;return out;},{}),
+   // Counters drive visual-logic gates; omitting them resets puzzles on reload.
+   counters:Object.keys(gameplay.state.counters).filter(function(k){return /^[A-Za-zА-Яа-яЁё_][A-Za-zА-Яа-яЁё0-9_-]{0,39}$/.test(k);}).slice(0,200).reduce(function(out,k){var v=gameplay.state.counters[k];if(typeof v==='number'&&Number.isFinite(v))out[k]=Math.max(-1000000000,Math.min(1000000000,v));return out;},{}),
    doorTargets:gameObjects.filter(function(q){return !!q.doorOrigin&&!!q.doorTarget;}).map(function(q){return q.def.id;}),
    checkpoint:state.checkpoint}));
   saveAvailable=true;return true;
@@ -36,6 +38,10 @@ function loadProgress(){
   // prototype keys or arbitrary values from localStorage into graph flags.
   if(saved.flags&&typeof saved.flags==='object'&&!Array.isArray(saved.flags)){
    Object.keys(saved.flags).slice(0,200).forEach(function(k){if(/^[A-Za-zА-Яа-яЁё_][A-Za-zА-Яа-яЁё0-9_-]{0,39}$/.test(k)&&typeof saved.flags[k]==='boolean')gameplay.state.flags[k]=saved.flags[k];});
+  }
+  // Restore only finite bounded numeric graph counters; old saves omit this field.
+  if(saved.counters&&typeof saved.counters==='object'&&!Array.isArray(saved.counters)){
+   Object.keys(saved.counters).slice(0,200).forEach(function(k){var v=saved.counters[k];if(/^[A-Za-zА-Яа-яЁё_][A-Za-zА-Яа-яЁё0-9_-]{0,39}$/.test(k)&&typeof v==='number'&&Number.isFinite(v)&&Math.abs(v)<=1000000000)gameplay.state.counters[k]=v;});
   }
   if(Array.isArray(saved.checkpoint)&&saved.checkpoint.length===3&&saved.checkpoint.every(function(v){return typeof v==='number'&&Number.isFinite(v)&&Math.abs(v)<=10000;}))state.checkpoint=saved.checkpoint.slice();
   var byId=new Map(gameObjects.map(function(q){return [q.def.id,q];}));

@@ -93,6 +93,20 @@ const {execFileSync}=require('node:child_process'),{chromium}=require('playwrigh
   await game.waitForFunction(()=>window.__bridgeDebugState().doorStates.some(d=>d.id==='kit_door'&&d.open),{timeout:6000});
   assert.equal((await game.evaluate(()=>window.__bridgeDebugState())).doorStates.find(d=>d.id==='kit_door').open,true,'opened gate survives save reload');
 
+  // Graph counter state is not a quest reward. It must survive an interaction
+  // save and standalone reload, including zero and negative values.
+  await game.evaluate(()=>{
+   const counters=window.__bridgeDebugState().counters;
+   counters.puzzle_steps=7;counters.debt=-2;counters.zero=0;
+  });
+  await press(game,'e');
+  await game.reload();
+  await game.waitForFunction(()=>window.__bridgeDebugState&&window.__bridgeDebugState().objects>=16);
+  const counterRestored=await game.evaluate(()=>window.__bridgeDebugState().counters);
+  assert.equal(counterRestored.puzzle_steps,7,'graph counter persisted after interaction');
+  assert.equal(counterRestored.debt,-2,'negative graph counter persisted');
+  assert.equal(counterRestored.zero,0,'zero graph counter persisted');
+
   // Corrupted or stale saves must not duplicate collection or hide non-pickup
   // scene objects. This also guards against future edits reusing object IDs.
   await game.evaluate(()=>{
@@ -105,6 +119,7 @@ const {execFileSync}=require('node:child_process'),{chromium}=require('playwrigh
    save.doorTargets=['kit_door','kit_coin1','unknown_door'];
    save.flags={gate_open:true,invalid:'not a boolean','__proto__':true};
    save.checkpoint=[Infinity,0,0];
+   save.counters={puzzle_steps:7,debt:-2,zero:0,too_big:1e30,not_number:'9',bad_name:NaN};
    localStorage.setItem(key,JSON.stringify(save));
   });
   await game.reload();
@@ -113,6 +128,9 @@ const {execFileSync}=require('node:child_process'),{chromium}=require('playwrigh
   assert.equal(recovered.collected,3,'collected derived from unique existing pickups');
   assert.deepEqual(recovered.pickedComponentIds,[],'non-pickup component IDs ignored');
   assert.equal(recovered.flags.gate_open,true,'valid flag survives malformed save');
+  assert.equal(recovered.counters.puzzle_steps,7,'valid graph counter survives malformed save');
+  assert.equal(recovered.counters.too_big,undefined,'oversized graph counter ignored');
+  assert.equal(recovered.counters.not_number,undefined,'non-numeric graph counter ignored');
   await game.waitForFunction(()=>window.__bridgeDebugState().doorStates.some(d=>d.id==='kit_door'&&d.open),{timeout:6000});
   assert.equal(recovered.quests.quests.filter(q=>q.claimed).length,2,'quest progress retained after recovery');
 
