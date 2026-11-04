@@ -62,7 +62,7 @@ function round(v){return Math.round(v*100)/100;}
 function lightingDefaults(){return {ambientColor:'#eaf6ff',ambientIntensity:1.5,sunColor:'#ffeed9',sunIntensity:1.6,shadows:true,fog:false,fogColor:'#96bfd8',fogNear:20,fogFar:95};}
 function normalizeDoc(doc){
  if(!doc.settings)doc.settings={sky:'#80bbeb',moveSpeed:5,jumpPower:7.6};
- var slope=Number(doc.settings.maxWalkableSlopeDeg);doc.settings.maxWalkableSlopeDeg=Number.isFinite(slope)&&doc.settings.maxWalkableSlopeDeg!==undefined?Math.max(0,Math.min(89,slope)):45;
+ var slope=Number(doc.settings.maxWalkableSlopeDeg);doc.settings.maxWalkableSlopeDeg=doc.settings.maxWalkableSlopeDeg!=null&&Number.isFinite(slope)?Math.max(0,Math.min(89,slope)):45;
  doc.settings.lighting=Object.assign(lightingDefaults(),doc.settings.lighting||{});
  if(!Array.isArray(doc.assets))doc.assets=[];
  if(!Array.isArray(doc.textures))doc.textures=[];
