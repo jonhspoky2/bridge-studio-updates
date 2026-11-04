@@ -30,4 +30,13 @@ const restored=Quest.create(doc,{});
 restored.restore(quests.snapshot());
 assert.equal(restored.list().find(q=>q.id==='coins').claimed,true);
 assert.equal(restored.list().find(q=>q.id==='press').progress,1);
+{
+ let granted=0,collects=0,interactions=0;
+ const legacy={objects:[{id:'legacy',action:'collect',components:[{type:'pickup',enabled:true,amount:10,activation:'interact'}]}],graphs:[]};
+ const g=Gameplay.create(legacy,{addCoins:n=>{granted+=n;},onEvent:event=>{if(event==='collect')collects++;if(event==='interact')interactions++;}});
+ g.interact('legacy',1200);
+ assert.equal(granted,0,'action=collect owns coin award; redundant Pickup component cannot pay twice');
+ assert.equal(collects,0,'action=collect owns collect event; redundant Pickup component cannot emit twice');
+ assert.equal(interactions,1,'existing interact graphs remain compatible');
+}
 console.log('Quest collect/interact separation and restore passed');
