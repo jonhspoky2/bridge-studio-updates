@@ -97,8 +97,8 @@ const {execFileSync}=require('node:child_process'),{chromium}=require('playwrigh
    if(!key)throw Error('missing game save');
    const save=JSON.parse(localStorage.getItem(key));
    save.collected=999;
-   save.picked=['kit_coin_1','kit_coin_1','kit_coin_2','kit_coin_3','unknown_coin'];
-   save.componentPicked=['kit_door','kit_rover','kit_console'];
+   save.picked=['kit_coin1','kit_coin1','kit_coin2','kit_coin3','unknown_coin'];
+   save.componentPicked=['kit_door','kit_rover','kit_button'];
    localStorage.setItem(key,JSON.stringify(save));
   });
   await game.reload();
