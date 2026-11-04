@@ -11,6 +11,8 @@ on:
       - 'tests/terrain-core.cjs'
       - 'tests/terrain-walk.cjs'
       - 'tests/terrain-slope.cjs'
+      - 'tests/gameplay-v020.cjs'
+      - 'tests/gameplay-v020-browser.cjs'
       - 'tests/terrain-paint.cjs'
       - 'tests/terrain-browser.cjs'
       - 'tests/terrain-sculpt.cjs'
@@ -25,6 +27,8 @@ on:
       - 'tests/terrain-core.cjs'
       - 'tests/terrain-walk.cjs'
       - 'tests/terrain-slope.cjs'
+      - 'tests/gameplay-v020.cjs'
+      - 'tests/gameplay-v020-browser.cjs'
       - '.github/workflows/terrain-source.yml'
   workflow_dispatch:
 
@@ -44,6 +48,8 @@ jobs:
           node --check tests/terrain-slope.cjs
           node --check src/terrain_sculpt.js
           node --check src/game_runtime.js
+          node --check src/gameplay_core.js
+          node --check tests/gameplay-v020.cjs
           node --check src/studio.js
           python3 -m py_compile tools/build_studio.py
       - name: Build pre-release editor and validate file budget
@@ -81,6 +87,7 @@ jobs:
           node tests/terrain-core.cjs
           node tests/terrain-walk.cjs
           node tests/terrain-slope.cjs
+          node tests/gameplay-v020.cjs
           node tests/terrain-sculpt.cjs
           node tests/terrain-paint.cjs
           node tests/terrain-paint-performance.cjs
@@ -98,26 +105,26 @@ jobs:
           print('Built editor:', len(html.encode('utf-8')), 'bytes')
           PY
 
-      - name: Upload unsigned v0.19.4 build for offline signing
+      - name: Upload unsigned v0.20.0 build for offline signing
         uses: actions/upload-artifact@v4
         with:
-          name: bridge-v0194-candidate-unsigned
+          name: bridge-v0200-candidate-unsigned
           path: /tmp/bridge-terrain-studio.html
           if-no-files-found: error
 
       - name: Stage candidate payload on feature branch (manifest unchanged)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/fix/v0.19.4-slower-early-slope-slide'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/v0.20-gameplay-timers-counters'
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p updates/v0.19.4
-          cp /tmp/bridge-terrain-studio.html updates/v0.19.4/studio.html
+          mkdir -p updates/v0.20.0
+          cp /tmp/bridge-terrain-studio.html updates/v0.20.0/studio.html
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add updates/v0.19.4/studio.html
+          git add updates/v0.20.0/studio.html
           if ! git diff --cached --quiet; then
-            git commit -m 'Stage unsigned v0.19.4 editor payload (manifest stays 0.19.3)'
-            git push origin HEAD:fix/v0.19.4-slower-early-slope-slide
+            git commit -m 'Stage unsigned v0.20.0 editor payload (manifest stays 0.19.4)'
+            git push origin HEAD:feature/v0.20-gameplay-timers-counters
           fi
 
   browser:
@@ -131,6 +138,7 @@ jobs:
       - name: Terrain browser integration (SwiftShader WebGL)
         run: |
           node tests/terrain-browser.cjs
+          node tests/gameplay-v020-browser.cjs
           node tests/terrain-sculpt-browser.cjs
       - name: Upload Terrain Sculpt visual evidence
         if: always()
