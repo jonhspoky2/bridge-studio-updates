@@ -49,6 +49,9 @@
   function notify(){revision++;if(typeof hooks.onChange==='function')hooks.onChange(snapshot());}
   function record(event,source,quantity){
    if(EVENTS.indexOf(event)<0)return [];
+   // Omitted quantity is one event; explicit invalid or non-positive values
+   // must not manufacture quest progress from malformed graph events.
+   if(quantity!==undefined&&(!Number.isFinite(Number(quantity))||Number(quantity)<1))return [];
    var n=Math.max(1,count(quantity,1,9999)),changed=[];
    catalog.forEach(function(q){
     if(q.event!==event||(q.source!=='*'&&q.source!==source)||claimed[q.id]||(q.requiresQuestId&&!claimed[q.requiresQuestId]))return;

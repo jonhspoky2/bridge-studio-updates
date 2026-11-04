@@ -39,4 +39,19 @@ assert.equal(restored.list().find(q=>q.id==='press').progress,1);
  assert.equal(collects,0,'action=collect owns collect event; redundant Pickup component cannot emit twice');
  assert.equal(interactions,1,'existing interact graphs remain compatible');
 }
+{
+ const q=Quest.create({quests:[{id:'quantity_guard',event:'collect',source:'*',required:5}],objects:[],items:[]});
+ const before=q.snapshot().revision;
+ for(const amount of [0,-1,-99,NaN,Infinity,-Infinity,'invalid',null,0.5]){
+  assert.deepEqual(q.record('collect','coin',amount),[],'invalid quantity ignored: '+String(amount));
+ }
+ assert.equal(q.list()[0].progress,0,'invalid events cannot advance quests');
+ assert.equal(q.snapshot().revision,before,'invalid events cannot broadcast progress');
+ assert.deepEqual(q.record('collect','coin'),['quantity_guard'],'legacy omitted quantity is one');
+ assert.equal(q.list()[0].progress,1);
+ assert.deepEqual(q.record('collect','coin',2),['quantity_guard'],'positive quantities still count');
+ assert.equal(q.list()[0].progress,3);
+ assert.deepEqual(q.record('interact','coin',2),[],'event isolation maintained');
+ assert.equal(q.list()[0].progress,3);
+}
 console.log('Quest collect/interact separation and restore passed');
