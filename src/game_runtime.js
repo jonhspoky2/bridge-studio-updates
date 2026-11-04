@@ -14,7 +14,12 @@ function saveProgress(){
  try{
   var picked=gameObjects.filter(function(q){return q.def.action==='collect'&&!q.mesh.visible;}).map(function(q){return q.def.id;});
   localStorage.setItem(saveKey,JSON.stringify({version:1,coins:state.coins,collected:state.collected,inventory:economy.snapshot(),
-   quests:quests.snapshot(),picked:picked,componentPicked:Object.keys(gameplay.state.picked).filter(function(k){return !!gameplay.state.picked[k];})}));
+   quests:quests.snapshot(),picked:picked,componentPicked:Object.keys(gameplay.state.picked).filter(function(k){return !!gameplay.state.picked[k];}),
+   // Graph flags and doors are part of the game state: a claimed gate quest
+   // must not reload into a permanently locked world.
+   flags:Object.keys(gameplay.state.flags).filter(function(k){return /^[A-Za-zА-Яа-яЁё_][A-Za-zА-Яа-яЁё0-9_-]{0,39}$/.test(k);}).slice(0,200).reduce(function(out,k){out[k]=gameplay.state.flags[k]===true;return out;},{}),
+   doorTargets:gameObjects.filter(function(q){return !!q.doorOrigin&&!!q.doorTarget;}).map(function(q){return q.def.id;}),
+   checkpoint:state.checkpoint}));
   saveAvailable=true;return true;
  }catch(e){saveAvailable=false;return false;}
 }
@@ -27,7 +32,14 @@ function loadProgress(){
   var number=function(v,max){return typeof v==='number'&&Number.isFinite(v)?Math.max(0,Math.min(max,Math.floor(v))):0;};
   state.coins=number(saved.coins,1000000000);
   economy.restore(saved.inventory);quests.restore(saved.quests);
+  // Old v1 saves have no graph state; treat it as optional. Never accept
+  // prototype keys or arbitrary values from localStorage into graph flags.
+  if(saved.flags&&typeof saved.flags==='object'&&!Array.isArray(saved.flags)){
+   Object.keys(saved.flags).slice(0,200).forEach(function(k){if(/^[A-Za-zА-Яа-яЁё_][A-Za-zА-Яа-яЁё0-9_-]{0,39}$/.test(k)&&typeof saved.flags[k]==='boolean')gameplay.state.flags[k]=saved.flags[k];});
+  }
+  if(Array.isArray(saved.checkpoint)&&saved.checkpoint.length===3&&saved.checkpoint.every(function(v){return typeof v==='number'&&Number.isFinite(v)&&Math.abs(v)<=10000;}))state.checkpoint=saved.checkpoint.slice();
   var byId=new Map(gameObjects.map(function(q){return [q.def.id,q];}));
+  (Array.isArray(saved.doorTargets)?saved.doorTargets:[]).slice(0,2000).forEach(function(id){var q=byId.get(id);if(q&&q.doorOrigin)q.doorTarget=true;});
   // Restore only pickups that still exist in this version of the scene.
   // An arbitrary componentPicked ID must never hide a door, spawn or console.
   (Array.isArray(saved.picked)?saved.picked:[]).slice(0,2000).forEach(function(id){
