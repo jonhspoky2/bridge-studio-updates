@@ -73,7 +73,7 @@ if(mode==='quests'){
   var button=document.createElement('button');button.style.cssText='background:#38b69d;color:#082c28;border:0;border-radius:8px;padding:8px 12px;font-weight:700';
   button.disabled=q.claimed||q.progress<q.required;
   button.textContent=q.claimed?'Получено':q.progress<q.required?'Выполняется':'Забрать награду';
-  button.onclick=function(){var result=quests.claim(q.id);if(result.ok){notice('Задание выполнено: '+q.title);sfx('buy');showGameOverlay('quests');}
+  button.onclick=function(){var result;restoring=true;try{result=quests.claim(q.id);}finally{restoring=false;}if(result.ok){saveProgress();notice('Задание выполнено: '+q.title);sfx('buy');showGameOverlay('quests');}
    else notice(result.error);};e.appendChild(button);panel.appendChild(e);
  });
  overlay.appendChild(panel);root.appendChild(overlay);uiOverlay=overlay;return;
