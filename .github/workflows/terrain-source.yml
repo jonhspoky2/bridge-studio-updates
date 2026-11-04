@@ -10,6 +10,7 @@ on:
       - 'tools/build_studio.py'
       - 'tests/terrain-core.cjs'
       - 'tests/terrain-walk.cjs'
+      - 'tests/terrain-slope.cjs'
       - 'tests/terrain-paint.cjs'
       - 'tests/terrain-browser.cjs'
       - 'tests/terrain-sculpt.cjs'
@@ -23,6 +24,7 @@ on:
       - 'tools/build_studio.py'
       - 'tests/terrain-core.cjs'
       - 'tests/terrain-walk.cjs'
+      - 'tests/terrain-slope.cjs'
       - '.github/workflows/terrain-source.yml'
   workflow_dispatch:
 
@@ -37,6 +39,7 @@ jobs:
       - name: Validate source syntax
         run: |
           node --check src/terrain_core.js
+          node --check tests/terrain-slope.cjs
           node --check src/terrain_sculpt.js
           node --check src/game_runtime.js
           node --check src/studio.js
@@ -67,6 +70,7 @@ jobs:
         run: |
           node tests/terrain-core.cjs
           node tests/terrain-walk.cjs
+          node tests/terrain-slope.cjs
           node tests/terrain-sculpt.cjs
           node tests/terrain-paint.cjs
           node tests/terrain-paint-performance.cjs
