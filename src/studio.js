@@ -582,6 +582,33 @@ function addTimerCounterDemo(){
  project.graphs.push(g);logicGraphId=g.id;logicNodeId=add;logicLinkFrom=null;
  setTab('logic');refreshLogicEditor();status('Готовый граф: каждые три срабатывания таймера +5 монет. Измени интервал и запусти Play.');
 }
+function addUnlockGateDemo(){
+ if(!project||project.graphs.length>98||project.objects.length>1990){status('Недостаточно места для игровой схемы.',true);return;}
+ remember();
+ var spawn=project.objects.find(function(o){return o.type==='spawn';}),pos=spawn&&spawn.position||[0,0,0];
+ var bx=pos[0]+1.2,bz=pos[2],gx=pos[0]+4,gz=pos[2];
+ function floorAt(x,z){var h=window.BridgeTerrainCore.sampleHeight(project.terrain,x,z);return h===null?pos[1]:h;}
+ var button={id:id(),name:'Кнопка · 3 нажатия',type:'block',position:[bx,floorAt(bx,bz)+.45,bz],rotation:[0,0,0],scale:[.8,.8,.8],color:'#43d4c4',solid:false,action:'none',value:0,
+   components:[{type:'trigger',enabled:true,activation:'interact'}]};
+ var gate={id:id(),name:'Ворота · открыть графом',type:'block',position:[gx,floorAt(gx,gz)+1,gz],rotation:[0,0,0],scale:[1,2,3],color:'#a674eb',solid:true,action:'none',value:0,
+   components:[{type:'door',enabled:true,activation:'graph',openHeight:3}]};
+ var add=id(),test=id(),open=id(),signal=id(),reward=id(),notice=id();
+ var first={id:id(),name:'3 нажатия → открыть ворота',event:'interact',source:button.id,enabled:true,
+   nodes:[{id:add,type:'counter',key:'gate_presses',mode:'add',amount:1,x:280,y:120},
+    {id:test,type:'ifCounter',key:'gate_presses',amount:3,compare:'eq',x:520,y:120},
+    {id:open,type:'door',target:gate.id,mode:'open',x:760,y:120},
+    {id:signal,type:'emitSignal',signal:'gate_unlocked',x:980,y:120}],
+   links:[{from:'start',to:add,port:'next'},{from:add,to:test,port:'next'},
+    {from:test,to:open,port:'yes'},{from:open,to:signal,port:'next'}]};
+ var second={id:id(),name:'Сигнал ворот → награда',event:'signal',signal:'gate_unlocked',source:'*',enabled:true,
+   nodes:[{id:reward,type:'coins',amount:10,x:320,y:160},
+    {id:notice,type:'message',text:'Ворота открыты! +10 монет.',x:555,y:160}],
+   links:[{from:'start',to:reward,port:'next'},{from:reward,to:notice,port:'next'}]};
+ project.objects.push(button,gate);project.graphs.push(first,second);
+ logicGraphId=first.id;logicNodeId=test;logicLinkFrom=null;
+ refreshScene();refreshLists();setTab('logic');refreshLogicEditor();setDirty(true);
+ status('Создано: кнопка у Spawn, ворота и два графа. В Play нажми E три раза у кнопки.');
+}
 function logicSelectGraph(gid){logicGraphId=gid;logicNodeId=null;logicLinkFrom=null;refreshLogicEditor();}
 function addLogicNode(){var g=graphSelected();if(!g)return;var type=$('logicNodeType').value;if(g.nodes.length>=80){status('В одном графе не более 80 блоков.',true);return;}remember();var n={id:id(),type:type,x:350+(g.nodes.length%5)*220,y:60+Math.floor(g.nodes.length/5)*165,text:'Новое сообщение',amount:1,target:'',flag:'ready',value:true,mode:type==='counter'?'add':'toggle',key:'score',signal:'gate_unlocked',compare:'gte'};g.nodes.push(n);logicNodeId=n.id;refreshLogicEditor();}
 function removeLogicNode(){var g=graphSelected(),n=graphNodeSelected();if(!g||!n)return;remember();g.nodes=g.nodes.filter(function(x){return x.id!==n.id;});g.links=g.links.filter(function(l){return l.from!==n.id&&l.to!==n.id;});logicNodeId=null;logicLinkFrom=null;refreshLogicEditor();}
