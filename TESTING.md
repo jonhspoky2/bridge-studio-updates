@@ -97,3 +97,13 @@ node tests/build-v0183.cjs
 - RSA-подпись проверена по публичному ключу издателя; CI проверки манифеста: https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41763989389 — success.
 - GitHub Pages: https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41763989357 — success.
 - Непроверенное окружение: реальный Windows Bridge.exe, GPU и DPI Windows 125–200%.
+
+## Bridge Studio v0.22.0 — Game Systems QA
+
+- Unit `tests/quest-v022.cjs`: событие, источник, цель, награда, однократная выдача, инвентарь, покупки, сохранение/restore, обработка недействительных данных, совместимость — success.
+- Browser `tests/quest-v022-browser.cjs`: добавление демо в редактор, сохранение .rwscene, три E-взаимодействия, журнал Q, получение награды, экспорт WARPGAME HTML ≤3МБ, восстановление после обновления страницы — success.
+- [CI feature branch](https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41765737279) и [main CI](https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41766421496) — success. Прошли и ранее существовавшие тесты Gameplay, Terrain и D-01.
+- Published HTML: 410488 bytes; SHA-256 `b20b8e0d6b966a6845b8d5177b2f329848ab4b84de69ff582d35e9845d997182`.
+- Издательская RSA-3072/SHA-256 подпись и манифест проверены: https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41766756024 — success.
+- GitHub Pages: https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41766755905 — success.
+- Не проверено: реальный Windows Bridge.exe, GPU и интерфейс в Windows DPI 125–200%.
