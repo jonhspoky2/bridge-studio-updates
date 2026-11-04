@@ -94,7 +94,7 @@
    state.lastGraph=g.id;graphHits.push({graph:g.id,steps:steps,trace:trace,event:context.event});if(graphHits.length>30)graphHits.shift();
   }
   function emit(event,source,extra){if(EVENTS.indexOf(event)<0)return 0;if(executing>8){call('warn','Слишком глубокая цепочка событий '+event);return 0;}
-   state.events++;var fired=0;executing++;try{(doc.graphs||[]).forEach(function(g){if(g&&g.enabled!==false&&g.event===event&&(event==='signal'?g.signal===source:(!g.source||g.source==='*'||g.source===source))){fired++;runGraph(g,{event:event,source:source,data:extra||{}});}});}finally{executing--;}return fired;}
+   state.events++;if(typeof hooks.onEvent==='function')call('onEvent',event,source,extra||{});var fired=0;executing++;try{(doc.graphs||[]).forEach(function(g){if(g&&g.enabled!==false&&g.event===event&&(event==='signal'?g.signal===source:(!g.source||g.source==='*'||g.source===source))){fired++;runGraph(g,{event:event,source:source,data:extra||{}});}});}finally{executing--;}return fired;}
   /* Fixed-step compatible graph timers, maximum four firings per update. */
   function tick(dt){
    dt=num(dt,0,0,.25);if(!dt)return 0;
