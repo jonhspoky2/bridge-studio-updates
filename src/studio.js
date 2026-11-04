@@ -590,6 +590,14 @@ function importLibrary(pack){if(!pack||pack.format!=='rwbridge.library'||pack.ve
  pack.assets.forEach(function(a){if(typeof a.id!=='string'||typeof a.data!=='string'||!a.data.length)throw Error('Библиотека содержит повреждённую GLB-модель');var known=project.assets.find(function(x){return x.data===a.data;});if(known)am[a.id]=known.id;else{var fresh=clone(a);fresh.id=id();project.assets.push(fresh);am[a.id]=fresh.id;imported++;}});
  pack.textures.forEach(function(t){if(typeof t.id!=='string'||typeof t.data!=='string'||!/^data:image\/(png|jpeg|webp);base64,/i.test(t.data))throw Error('Библиотека содержит повреждённую текстуру');var known=project.textures.find(function(x){return x.data===t.data;});if(known)tm[t.id]=known.id;else{var fresh=clone(t);fresh.id=id();project.textures.push(fresh);tm[t.id]=fresh.id;imported++;}});
  pack.prefabs.forEach(function(p){if(!Array.isArray(p.objects)||p.objects.length>2000)throw Error('Повреждён Prefab в библиотеке');var fresh=clone(p);fresh.id=id();fresh.objects.forEach(function(o){if(o.assetId)o.assetId=am[o.assetId]||o.assetId;if(o.material&&o.material.textureId)o.material.textureId=tm[o.material.textureId]||o.material.textureId;});project.prefabs.push(fresh);imported++;});
+
+ (pack.materials||[]).forEach(function(m){
+   if(!m||typeof m.id!=='string'||!m.id||typeof m.name!=='string'||!/^#[0-9a-f]{6}$/i.test(m.color)||!['roughness','metalness','opacity','emissiveIntensity'].every(function(k){return typeof m[k]==='number'&&Number.isFinite(m[k]);})||m.roughness<0||m.roughness>1||m.metalness<0||m.metalness>1||m.opacity<0||m.opacity>1||m.emissiveIntensity<0||m.emissiveIntensity>10||!/^#[0-9a-f]{6}$/i.test(m.emissive))throw Error('Повреждён PBR-материал в библиотеке');
+   var fresh=clone(m);fresh.textureId=tm[m.textureId]||m.textureId||'';
+   if(fresh.textureId&&!project.textures.some(function(x){return x.id===fresh.textureId;}))throw Error('Материал ссылается на отсутствующую текстуру');
+   var known=project.materials.some(function(x){return x.name===fresh.name&&x.color===fresh.color&&x.roughness===fresh.roughness&&x.metalness===fresh.metalness&&x.opacity===fresh.opacity&&x.emissive===fresh.emissive&&x.emissiveIntensity===fresh.emissiveIntensity&&x.textureId===fresh.textureId;});
+   if(!known){fresh.id=id();project.materials.push(fresh);imported++;}
+ });
  refreshAssetBrowser();status('Импортировано элементов библиотеки: '+imported+'.');}
 /* Material Bank stores reusable PBR values. Applying copies a material into each
    object, so exported games have no runtime catalog lookup and no new dependencies. */
