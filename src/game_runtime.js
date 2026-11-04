@@ -69,10 +69,10 @@ if(mode==='quests'){
   var e=document.createElement('div');e.style.cssText='border-bottom:1px solid #345067;padding:14px 6px';
   var title=document.createElement('strong');title.textContent=q.title;e.appendChild(title);
   var detail=document.createElement('div');detail.style.cssText='font-size:12px;color:#b5cce1;margin:5px 0';
-  detail.textContent=(q.description?q.description+' · ':'')+q.progress+' / '+q.required+' · Награда: '+q.rewardCoins+' монет'+(q.rewardItemId?' + '+q.rewardItemCount+'× '+q.rewardItemId:'');e.appendChild(detail);
+  var prerequisite=tasks.find(function(t){return t.id===q.requiresQuestId;});detail.textContent=(q.description?q.description+' · ':'')+q.progress+' / '+q.required+' · Награда: '+q.rewardCoins+' монет'+(q.rewardItemId?' + '+q.rewardItemCount+'× '+q.rewardItemId:'')+(q.locked?' · Сначала: '+(prerequisite?prerequisite.title:q.requiresQuestId):'');e.appendChild(detail);
   var button=document.createElement('button');button.style.cssText='background:#38b69d;color:#082c28;border:0;border-radius:8px;padding:8px 12px;font-weight:700';
-  button.disabled=q.claimed||q.progress<q.required;
-  button.textContent=q.claimed?'Получено':q.progress<q.required?'Выполняется':'Забрать награду';
+  button.disabled=q.claimed||q.locked||q.progress<q.required;
+  button.textContent=q.claimed?'Получено':q.locked?'Заблокировано':q.progress<q.required?'Выполняется':'Забрать награду';
   button.onclick=function(){var result;restoring=true;try{result=quests.claim(q.id);}finally{restoring=false;}if(result.ok){saveProgress();notice('Задание выполнено: '+q.title);sfx('buy');showGameOverlay('quests');}
    else notice(result.error);};e.appendChild(button);panel.appendChild(e);
  });
@@ -82,7 +82,7 @@ if(!entries.length){var p=document.createElement('p');p.textContent='В прое
 function notice(s){status.textContent=s;status.style.display='block';clearTimeout(notice._t);notice._t=setTimeout(function(){status.style.display='none';},2600);}
 function runScripts(type,ctx){(doc.scripts||[]).forEach(function(s){if(!s.enabled||s.event!==type)return;try{new Function('api','ctx','state','"use strict";\n'+s.code)(api,ctx||{},state);}catch(e){notice('Ошибка '+s.name+': '+e.message);console.error('Bridge script:',s.name,e);report('script-warning',s.name+': '+(e.stack||e.message));}});}
 var uiNodes=[];
-function drawHud(){uiNodes.forEach(function(ent){if(ent.config.bind==='coins')ent.el.textContent=(ent.config.text||'Coins')+': '+state.coins;else if(ent.config.bind==='health'&&gameplay)ent.el.textContent=(ent.config.text||'HP')+': '+gameplay.state.health;else if(ent.config.bind==='inventory'&&economy)ent.el.textContent=(ent.config.text||'Рюкзак')+': '+Object.values(economy.snapshot().inventory).reduce(function(a,n){return a+n;},0);else if(ent.config.bind==='healthPercent'&&gameplay){var percentage=Math.max(0,Math.min(100,Math.round(100*gameplay.state.health/gameplay.state.maxHealth)));ent.el.textContent=(ent.config.text||'HP')+' '+percentage+'%';if(ent.config.type==='progress')ent.el.style.background='linear-gradient(90deg,#51e0a0 '+percentage+'%,#293948 '+percentage+'%)';}});var hp=document.getElementById('health');if(hp&&gameplay)hp.textContent='♥ '+gameplay.state.health+' / '+gameplay.state.maxHealth;var built=document.getElementById('defaultCoins');if(built)built.textContent='✦ '+state.coins;var objective=document.getElementById('objective');if(objective){var questList=quests?quests.list():[],pending=questList.find(function(q){return !q.claimed;}),done=questList.filter(function(q){return q.claimed;}).length;objective.textContent=(requiredCoins?'Собрано '+state.collected+' / '+requiredCoins:'Свободный режим')+(pending?' · '+pending.title+': '+pending.progress+'/'+pending.required+' [Q]':questList.length?' · Задания '+done+'/'+questList.length+' [Q]':'');
+function drawHud(){uiNodes.forEach(function(ent){if(ent.config.bind==='coins')ent.el.textContent=(ent.config.text||'Coins')+': '+state.coins;else if(ent.config.bind==='health'&&gameplay)ent.el.textContent=(ent.config.text||'HP')+': '+gameplay.state.health;else if(ent.config.bind==='inventory'&&economy)ent.el.textContent=(ent.config.text||'Рюкзак')+': '+Object.values(economy.snapshot().inventory).reduce(function(a,n){return a+n;},0);else if(ent.config.bind==='healthPercent'&&gameplay){var percentage=Math.max(0,Math.min(100,Math.round(100*gameplay.state.health/gameplay.state.maxHealth)));ent.el.textContent=(ent.config.text||'HP')+' '+percentage+'%';if(ent.config.type==='progress')ent.el.style.background='linear-gradient(90deg,#51e0a0 '+percentage+'%,#293948 '+percentage+'%)';}});var hp=document.getElementById('health');if(hp&&gameplay)hp.textContent='♥ '+gameplay.state.health+' / '+gameplay.state.maxHealth;var built=document.getElementById('defaultCoins');if(built)built.textContent='✦ '+state.coins;var objective=document.getElementById('objective');if(objective){var questList=quests?quests.list():[],pending=questList.find(function(q){return !q.claimed&&!q.locked;})||questList.find(function(q){return !q.claimed;}),done=questList.filter(function(q){return q.claimed;}).length;objective.textContent=(requiredCoins?'Собрано '+state.collected+' / '+requiredCoins:'Свободный режим')+(pending?' · '+pending.title+': '+pending.progress+'/'+pending.required+' [Q]':questList.length?' · Задания '+done+'/'+questList.length+' [Q]':'');
  var progressTrack=document.getElementById('questProgressTrack'),progressFill=document.getElementById('questProgressFill');
  if(progressTrack&&progressFill){
   // The first unclaimed quest is the active objective. Claiming switches to the
@@ -147,11 +147,11 @@ function isInteractable(q){
  if(d.action&&d.action!=='none'&&actionMode(d)==='interact')return true;
  if((d.components||[]).some(function(c){return c.enabled!==false&&componentMode(c)==='interact';}))return true;
  if((doc.graphs||[]).some(function(g){return g&&g.enabled!==false&&g.event==='interact'&&(g.source==='*'||g.source===d.id);}))return true;
- return !!(quests&&quests.list().some(function(x){return x.event==='interact'&&!x.claimed&&x.source===d.id&&x.progress<x.required;}));
+ return !!(quests&&quests.list().some(function(x){return x.event==='interact'&&!x.locked&&!x.claimed&&x.source===d.id&&x.progress<x.required;}));
 }
 function interactiveDistance(q){var dx=q.mesh.position.x-player.position.x,dz=q.mesh.position.z-player.position.z,dy=q.mesh.position.y-player.position.y;return Math.hypot(dx,dz,dy*.65);}
 function isPendingQuestTarget(q){
- return !!(quests&&quests.list().some(function(x){return x.event==='interact'&&x.source===q.def.id&&!x.claimed&&x.progress<x.required;}));
+ return !!(quests&&quests.list().some(function(x){return x.event==='interact'&&x.source===q.def.id&&!x.locked&&!x.claimed&&x.progress<x.required;}));
 }
 function nearestInteraction(){
  return triggerObjs.filter(function(q){return isInteractable(q)&&interactiveDistance(q)<2.85;})
@@ -175,7 +175,7 @@ function updateInteractionHint(){
  if(!hint)return;
  hint.style.display=q?'block':'none';
  if(!q)return;
- var task=quests&&quests.list().find(function(v){return v.event==='interact'&&v.source===q.def.id&&!v.claimed;});
+ var task=quests&&quests.list().find(function(v){return v.event==='interact'&&v.source===q.def.id&&!v.locked&&!v.claimed;});
  hint.textContent='[E] '+(q.def.action==='collect'?'Подобрать ':task?'Задание · ':'')+(q.def.name||'Объект')+(task?' · '+task.progress+'/'+task.required:'');
  hint.style.borderColor=task?'#e5b85a':'#5bcad8';
 }
