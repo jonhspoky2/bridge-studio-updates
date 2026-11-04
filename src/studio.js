@@ -614,10 +614,36 @@ function addLogicNode(){var g=graphSelected();if(!g)return;var type=$('logicNode
 function removeLogicNode(){var g=graphSelected(),n=graphNodeSelected();if(!g||!n)return;remember();g.nodes=g.nodes.filter(function(x){return x.id!==n.id;});g.links=g.links.filter(function(l){return l.from!==n.id&&l.to!==n.id;});logicNodeId=null;logicLinkFrom=null;refreshLogicEditor();}
 function deleteLogicGraph(){var g=graphSelected();if(!g)return;if(!confirm('Удалить граф «'+g.name+'»?'))return;remember();project.graphs=project.graphs.filter(function(x){return x.id!==g.id;});logicGraphId=project.graphs[0]&&project.graphs[0].id||null;logicNodeId=null;refreshLogicEditor();}
 function eventSourceChoices(g){if(g.event==='timer'||g.event==='signal')return '<option value="*">Вся игра</option>';var isUI=g.event==='ui',available=isUI?project.ui:project.objects;return '<option value="*">Любой объект</option>'+available.map(function(o){return '<option value="'+esc(o.id)+'"'+(g.source===o.id?' selected':'')+'>'+esc(o.name)+'</option>';}).join('');}
-function drawLogicWires(){var g=graphSelected(),svg=$('logicWires');if(!g||!svg)return;var nodes={start:{x:32,y:200}};g.nodes.forEach(function(n){nodes[n.id]={x:Math.max(0,Number(n.x)||0),y:Math.max(0,Number(n.y)||0)};});var paths=[];g.links.forEach(function(l){var a=nodes[l.from],b=nodes[l.to];if(!a||!b)return;var sy=a.y+(l.port==='yes'?116:l.port==='no'?145:91),tx=b.x,ty=b.y+48;var sx=a.x+190,curve=Math.max(45,Math.abs(tx-sx)*.5);paths.push('<path class="logic-wire '+(l.port==='yes'?'branch-yes':l.port==='no'?'branch-no':'')+'" d="M'+sx+' '+sy+' C'+(sx+curve)+' '+sy+' '+(tx-curve)+' '+ty+' '+tx+' '+ty+'"/>');});svg.innerHTML=paths.join('');}
-function renderLogicGraph(){var g=graphSelected(),host=$('logicGraphSurface');host.querySelectorAll('.logic-node:not(.logic-event)').forEach(function(n){n.remove();});var start=$('logicStartName');start.textContent=g?logicEventNames[g.event]:'Выбери граф';if(!g){$('logicWires').innerHTML='';return;}
- g.nodes.forEach(function(n){var wrap=document.createElement('div');wrap.className='logic-node'+(logicNodeId===n.id?' selected':'');wrap.dataset.node=n.id;wrap.style.left=Math.max(0,Math.min(1250,Number(n.x)||0))+'px';wrap.style.top=Math.max(0,Math.min(760,Number(n.y)||0))+'px';var cond=n.type.indexOf('if')===0;
- wrap.innerHTML='<button class="in-port" data-logic-in="'+esc(n.id)+'" title="Вход блока">◉ Вход</button><strong>'+esc(logicNodeNames[n.type]||n.type)+'</strong><small>'+esc(n.type==='message'?n.text||'':n.type==='door'||n.type==='teleport'?n.target||'Выбери цель':cond?'Условие':['coins','heal','damage'].includes(n.type)?String(n.amount||1):n.type==='counter'||n.type==='ifCounter'?(n.key||'score')+' '+String(n.amount==null?1:n.amount):n.type==='emitSignal'?(n.signal||'gate_unlocked'):'Действие')+'</small><div class="ports">'+(cond?'<button data-logic-out="yes" data-node-id="'+esc(n.id)+'">✓ Да</button><button data-logic-out="no" data-node-id="'+esc(n.id)+'">× Нет</button>':'<button data-logic-out="next" data-node-id="'+esc(n.id)+'">● Далее</button>')+'</div>';
+function drawLogicWires(){
+ var g=graphSelected(),svg=$('logicWires'),surface=$('logicGraphSurface');
+ if(!g||!svg)return;
+ var bounds=surface.getBoundingClientRect(),inputs={},outputs={};
+ surface.querySelectorAll('[data-logic-in]').forEach(function(port){inputs[port.dataset.logicIn]=port;});
+ surface.querySelectorAll('[data-logic-out]').forEach(function(port){outputs[port.dataset.nodeId+':'+port.dataset.logicOut]=port;});
+ var paths=[];
+ g.links.forEach(function(link){
+  var output=outputs[link.from+':'+link.port],input=inputs[link.to];
+  if(!output||!input)return;
+  var a=output.getBoundingClientRect(),b=input.getBoundingClientRect();
+  var sx=a.right-bounds.left,sy=a.top+a.height/2-bounds.top,tx=b.left+b.width/2-bounds.left,ty=b.top+b.height/2-bounds.top;
+  var curve=Math.max(45,Math.abs(tx-sx)*.5);
+  var category=output.closest('.logic-node').dataset.category||'event';
+  var classes='logic-wire wire-'+category;
+  if(link.port==='yes'||link.port==='no')classes+=' branch-'+link.port;
+  if(link.from===logicNodeId||link.to===logicNodeId)classes+=' selected';
+  paths.push('<path class="'+classes+'" d="M'+sx+' '+sy+' C'+(sx+curve)+' '+sy+' '+(tx-curve)+' '+ty+' '+tx+' '+ty+'"/>');
+ });
+ svg.innerHTML=paths.join('');
+}
+function renderLogicGraph(){var g=graphSelected(),host=$('logicGraphSurface');host.querySelectorAll('.logic-node:not(.logic-event)').forEach(function(n){n.remove();});var start=$('logicStartName');start.textContent=g?(logicEventNames[g.event]||g.event):'Выбери граф';$('logicCanvas').dataset.empty=String(!g);if(!g){$('logicWires').innerHTML='';return;}
+ g.nodes.forEach(function(n){var wrap=document.createElement('div');wrap.className='logic-node'+(logicNodeId===n.id?' selected':'');wrap.dataset.node=n.id;
+ var category=n.type.indexOf('if')===0?'condition':n.type==='emitSignal'?'signal':'action';
+ wrap.dataset.category=category;wrap.classList.add('logic-'+category);
+ var missingTarget=['teleport','door','visibility','checkpoint'].includes(n.type)&&(!n.target||!project.objects.some(function(o){return o.id===n.target;}));
+ wrap.classList.toggle('has-warning',missingTarget||!logicNodeNames[n.type]);
+ wrap.title=missingTarget?'Выбери существующий объект в свойствах блока.':logicNodeNames[n.type]||'Неизвестный тип блока';
+ wrap.style.left=Math.max(0,Math.min(1250,Number(n.x)||0))+'px';wrap.style.top=Math.max(0,Math.min(760,Number(n.y)||0))+'px';var cond=n.type.indexOf('if')===0;
+ wrap.innerHTML='<span class="logic-category">'+({condition:'CONDITION',signal:'SIGNAL',action:'ACTION'}[category])+'</span><button class="in-port" data-logic-in="'+esc(n.id)+'" title="Вход блока">◉ Вход</button><strong>'+esc(logicNodeNames[n.type]||n.type)+'</strong><small>'+esc(n.type==='message'?n.text||'':n.type==='door'||n.type==='teleport'?n.target||'Выбери цель':cond?'Условие':['coins','heal','damage'].includes(n.type)?String(n.amount||1):n.type==='counter'||n.type==='ifCounter'?(n.key||'score')+' '+String(n.amount==null?1:n.amount):n.type==='emitSignal'?(n.signal||'gate_unlocked'):'Действие')+'</small><div class="ports">'+(cond?'<button data-logic-out="yes" data-node-id="'+esc(n.id)+'">✓ Да</button><button data-logic-out="no" data-node-id="'+esc(n.id)+'">× Нет</button>':'<button data-logic-out="next" data-node-id="'+esc(n.id)+'">● Далее</button>')+'</div>';
  wrap.onclick=function(e){if(e.target.closest('button'))return;logicNodeId=n.id;renderLogicGraph();renderLogicNodeProperties();};
  wrap.addEventListener('pointerdown',function(e){if(e.button!==0||e.target.closest('button'))return;var beginX=e.clientX,beginY=e.clientY,oldX=Number(n.x)||0,oldY=Number(n.y)||0,changed=false;logicNodeId=n.id;var dragTarget=wrap;function move(ev){if(!changed&&Math.abs(ev.clientX-beginX)+Math.abs(ev.clientY-beginY)>3){remember();changed=true;}n.x=Math.max(0,Math.min(1250,oldX+ev.clientX-beginX));n.y=Math.max(0,Math.min(750,oldY+ev.clientY-beginY));dragTarget.style.left=n.x+'px';dragTarget.style.top=n.y+'px';drawLogicWires();}function finish(){window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',finish);refreshLogicEditor();}window.addEventListener('pointermove',move);window.addEventListener('pointerup',finish);});host.appendChild(wrap);
  });
@@ -625,8 +651,8 @@ function renderLogicGraph(){var g=graphSelected(),host=$('logicGraphSurface');ho
  host.querySelectorAll('[data-logic-in]').forEach(function(btn){btn.onclick=function(e){e.preventDefault();if(!logicLinkFrom)return;var to=btn.dataset.logicIn;if(to===logicLinkFrom.from){status('Нельзя подключить блок сам к себе.',true);return;}var link={from:logicLinkFrom.from,to:to,port:logicLinkFrom.port};if(!g.links.some(function(l){return l.from===link.from&&l.to===link.to&&l.port===link.port;})){remember();g.links.push(link);}logicLinkFrom=null;$('logicConnectionHint').textContent='Связь создана. Нажми выход другого блока для продолжения';renderLogicGraph();};});
  drawLogicWires();}
 function logicPropertyField(label,key,value,type){return '<label>'+esc(label)+'<input data-logic-prop="'+key+'" '+(type==='number'?'type="number" step="1"':'type="text"')+' value="'+esc(value)+'"></label>';}
-function renderLogicNodeProperties(){var g=graphSelected(),node=graphNodeSelected(),c=$('logicPropertyFields');if(!g){c.textContent='Сначала создай граф.';return;}if(!node){c.textContent='Нажми на блок, затем меняй его параметры.';return;}
- var html='<strong>'+esc(logicNodeNames[node.type])+'</strong>';
+function renderLogicNodeProperties(){var g=graphSelected(),node=graphNodeSelected(),c=$('logicPropertyFields');$('logicDisconnect').disabled=!node;$('logicRemoveNode').disabled=!node;if(!g){c.innerHTML='<div class="empty">Сначала создай граф кнопкой слева.</div>';return;}if(!node){c.innerHTML='<div class="empty">Выбери блок на схеме, чтобы настроить его параметры.</div>';return;}
+ var html='<strong>'+esc(logicNodeNames[node.type]||node.type)+'</strong>';
  if(node.type==='message')html+=logicPropertyField('Текст','text',node.text||'','text');
  if(['coins','heal','damage','ifCoins','ifHealth','counter','ifCounter'].includes(node.type))html+=logicPropertyField('Количество','amount',node.amount==null?1:node.amount,'number');
  if(['counter','ifCounter'].includes(node.type))html+=logicPropertyField('Имя счётчика','key',node.key||'score','text');
