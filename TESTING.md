@@ -56,3 +56,12 @@ node tests/build-v0183.cjs
 - Профиль 4×4 по 32 сегмента в CI: P95 обновления геометрии с 22,597 до 4,734 мс после оптимизации. Синтетическое измерение, не значение FPS пользователя.
 - Штатная RSA-подпись манифеста v0.19.0 проверена локально публичным ключом, полученным из ключа издателя; закрытый ключ не публиковался.
 - **Остаётся:** запуск реального Bridge.exe на Windows, подтверждение установки v0.19.0 пользователем и проверка на WARPGAME с реальной авторизацией.
+
+
+## v0.19.3 — Terrain slope physics release
+
+- CI источников, Play, HTML-экспорта: `https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41750299079` — success.
+- Контроль подписи RSA/SHA-256 локально с действующим публичным ключом обновлятора — success.
+- GitHub Actions проверка SHA-256 и размера подписанного патча: `https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41750692295` — success.
+- GitHub Pages deployment манифеста v0.19.3: `https://github.com/jonhspoky2/bridge-studio-updates/actions/runs/41750692968` — success.
+- Windows Bridge.exe: установка/физика в пользовательском GPU-окружении — **не проверено**, требуется smoke test.
