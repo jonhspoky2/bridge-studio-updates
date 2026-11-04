@@ -33,6 +33,8 @@ permissions:
 
 jobs:
   terrain:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -102,6 +104,21 @@ jobs:
           name: bridge-v0193-candidate-unsigned
           path: /tmp/bridge-terrain-studio.html
           if-no-files-found: error
+
+      - name: Stage candidate payload on feature branch (manifest unchanged)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/v0.19.3-slope-physics'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p updates/v0.19.3
+          cp /tmp/bridge-terrain-studio.html updates/v0.19.3/studio.html
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add updates/v0.19.3/studio.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'Stage unsigned v0.19.3 editor payload (manifest stays 0.19.2)'
+            git push origin HEAD:feature/v0.19.3-slope-physics
+          fi
 
   browser:
     runs-on: ubuntu-24.04
