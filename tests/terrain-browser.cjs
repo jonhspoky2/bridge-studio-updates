@@ -76,6 +76,42 @@ const {chromium}=require('playwright');
   const launched=await game.evaluate(()=>window.__bridgeDebugState());
   assert.ok(Math.abs(launched.position[1]-launched.terrainY)<.1,'exported surface matches Play');
   console.log('Terrain browser integration OK:',{size:Buffer.byteLength(exported),chunks:launched.terrainChunks,walkedTo:traversed.position});
+  // Verify steep slopes cannot be ascended in both isolated Play and exported HTML.
+  await game.close();
+  const steepDoc=JSON.parse(JSON.stringify(saved));
+  steepDoc.settings.maxWalkableSlopeDeg=45;
+  for(const chunk of steepDoc.terrain.chunks)
+   for(let z=0;z<=chunk.segments;z++)for(let x=0;x<=chunk.segments;x++)
+    chunk.heights[z*(chunk.segments+1)+x]=Math.max(0,(chunk.x+x*chunk.step+8)*Math.tan(Math.PI/3));
+  steepDoc.objects.filter(o=>o.type==='spawn').forEach(o=>{o.position=[-12,0,0];});
+  await page.locator('#projectInput').setInputFiles({name:'steep-slope.rwscene',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(steepDoc))});
+  await page.waitForFunction(()=>window.__bridgeQA().project.settings.maxWalkableSlopeDeg===45);
+  assert.equal(await page.locator('#gameSlope').inputValue(),'45');
+  await page.click('#btnPlay');
+  await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('3D-кадр'),{timeout:15000});
+  const slopeFrame=await (await page.locator('#playFrame').elementHandle()).contentFrame();
+  await slopeFrame.waitForFunction(()=>window.__bridgeDebugState&&window.__bridgeDebugState().grounded);
+  await slopeFrame.evaluate(()=>window.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyD',key:'d'})));
+  await slopeFrame.waitForTimeout(2200);
+  await slopeFrame.evaluate(()=>window.dispatchEvent(new KeyboardEvent('keyup',{code:'KeyD',key:'d'})));
+  const slopePlay=await slopeFrame.evaluate(()=>window.__bridgeDebugState());
+  assert.ok(slopePlay.position[0]<-7.8,'Play must stop 60 degree uphill climb: '+JSON.stringify(slopePlay));
+  await page.click('#btnStop');
+  await page.selectOption('#exportProfile','warpgame');
+  const slopeDownload=page.waitForEvent('download');
+  await page.click('#btnBuild');
+  exported=await fs.readFile(await (await slopeDownload).path(),'utf8');
+  assert.ok(Buffer.byteLength(exported,'utf8')<=3000000,'steep HTML export within WARPGAME budget');
+  const slopeExport=await context.newPage();
+  await slopeExport.goto('http://127.0.0.1:41437/exported.html');
+  await slopeExport.waitForFunction(()=>window.__bridgeDebugState&&window.__bridgeDebugState().grounded);
+  await slopeExport.evaluate(()=>window.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyD',key:'d'})));
+  await slopeExport.waitForTimeout(2200);
+  await slopeExport.evaluate(()=>window.dispatchEvent(new KeyboardEvent('keyup',{code:'KeyD',key:'d'})));
+  const slopeResult=await slopeExport.evaluate(()=>window.__bridgeDebugState());
+  assert.ok(slopeResult.position[0]<-7.8,'Export must stop 60 degree uphill climb: '+JSON.stringify(slopeResult));
+  assert.equal(slopeResult.maxWalkableSlopeDeg,45);
+  console.log('v0.19.3 Play/Export steep face:',{playX:slopePlay.position[0],exportX:slopeResult.position[0]});
   await context.close();
  }finally{await browser.close();}
 })().catch(err=>{console.error(err);process.exitCode=1;});
