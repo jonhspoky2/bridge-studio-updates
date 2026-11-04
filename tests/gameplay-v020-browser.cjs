@@ -1,0 +1,63 @@
+/* Browser integration v0.20: visual gameplay timer -> save -> Play -> export. */
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs/promises');
+const path=require('node:path'),os=require('node:os');
+const {execFileSync}=require('node:child_process');
+const {chromium}=require('playwright');
+(async()=>{
+ const tmp=path.join(os.tmpdir(),'bridge-gameplay-v020.html');
+ execFileSync('python3',[path.resolve(__dirname,'../tools/build_studio.py'),'--output',tmp]);
+ const html=await fs.readFile(tmp);
+ const three=await fs.readFile(require.resolve('three/build/three.min.js'));
+ const browser=await chromium.launch({headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});
+ try{
+  const context=await browser.newContext({viewport:{width:1440,height:900},acceptDownloads:true});
+  let exported='';
+  await context.route('**/*',route=>{
+   const url=new URL(route.request().url());
+   if(url.pathname==='/exported.html'&&exported)return route.fulfill({contentType:'text/html; charset=utf-8',body:exported});
+   if(url.pathname.endsWith('/studio.html'))return route.fulfill({contentType:'text/html; charset=utf-8',body:html});
+   if(url.pathname.endsWith('/three.min.js')||url.pathname.endsWith('/r128/three.min.js'))return route.fulfill({contentType:'text/javascript',body:three});
+   if(url.pathname.includes('/Playding/js/auth.js'))return route.fulfill({contentType:'text/javascript',body:''});
+   if(url.hostname!=='127.0.0.1')return route.abort('internetdisconnected');
+   return route.fulfill({status:404,body:'not found'});
+  });
+  const page=await context.newPage();
+  await page.goto('http://127.0.0.1:41437/test/studio.html');
+  await page.waitForFunction(()=>typeof window.__bridgeQA==='function');
+  await page.click('[data-tab="logic"]');
+  await page.click('#makeTimerCounterDemo');
+  assert.equal(await page.locator('#logicEvent').inputValue(),'timer');
+  assert.equal(await page.locator('#logicTimerInterval').inputValue(),'2');
+  await page.locator('#logicTimerInterval').fill('0.1');
+  await page.locator('#logicTimerInterval').dispatchEvent('change');
+  const project=await page.evaluate(()=>window.__bridgeQA().project);
+  const timer=project.graphs.find(g=>g.event==='timer');
+  assert.equal(timer.interval,.1);
+  assert.ok(timer.nodes.some(n=>n.type==='counter')&&timer.nodes.some(n=>n.type==='ifCounter'),'graph made visually with counter + condition');
+  const saving=page.waitForEvent('download');await page.click('#saveProject');
+  const saved=JSON.parse(await fs.readFile(await (await saving).path(),'utf8'));
+  assert.deepEqual(saved.graphs.find(g=>g.id===timer.id),timer,'saved .rwscene retains timer graph');
+  await page.click('#btnPlay');
+  await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('3D-кадр'),{timeout:25000});
+  const frame=await (await page.locator('#playFrame').elementHandle()).contentFrame();
+  await frame.waitForFunction(()=>window.__bridgeDebugState&&window.__bridgeDebugState().coins>=5,{timeout:60000});
+  const state=await frame.evaluate(()=>window.__bridgeDebugState());
+  assert.ok(state.graphTrace.some(e=>e.event==='timer'),'Play graph trace contains timer');
+  assert.ok(Object.prototype.hasOwnProperty.call(state.counters,'ticks'),'Play exposes runtime counter');
+  await page.click('#btnStop');
+  const after=await page.evaluate(()=>window.__bridgeQA().project);
+  assert.deepEqual(after.graphs,project.graphs,'Stop preserves editor graph');
+  await page.selectOption('#exportProfile','warpgame');
+  const dl=page.waitForEvent('download');await page.click('#btnBuild');
+  exported=await fs.readFile(await (await dl).path(),'utf8');
+  assert.ok(Buffer.byteLength(exported,'utf8')<=3000000,'WARPGAME size limit');
+  assert.ok(exported.includes('"event":"timer"'),'timer serialized into export');
+  const game=await context.newPage();await game.goto('http://127.0.0.1:41437/exported.html');
+  await game.waitForFunction(()=>window.__bridgeDebugState&&window.__bridgeDebugState().coins>=5,{timeout:60000});
+  const released=await game.evaluate(()=>window.__bridgeDebugState());
+  assert.ok(released.graphTrace.some(e=>e.event==='timer'),'standalone runtime fires timer');
+  console.log('Gameplay v0.20 browser: timer+counter, rwscene, Play, exported HTML verified',{bytes:Buffer.byteLength(exported),coinsPlay:state.coins,coinsExport:released.coins});
+  await context.close();
+ }finally{await browser.close();}
+})().catch(err=>{console.error(err);process.exitCode=1;});
