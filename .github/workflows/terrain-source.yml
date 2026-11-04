@@ -25,6 +25,8 @@ on:
       - 'tests/objective-hud-browser.cjs'
       - 'tests/quest-chains.cjs'
       - 'tests/quest-chains-browser.cjs'
+      - 'tests/quest-collect-regression.cjs'
+      - 'tests/quest-collect-browser.cjs'
       - 'tests/terrain-paint.cjs'
       - 'tests/terrain-browser.cjs'
       - 'tests/terrain-sculpt.cjs'
@@ -53,6 +55,8 @@ on:
       - 'tests/objective-hud-browser.cjs'
       - 'tests/quest-chains.cjs'
       - 'tests/quest-chains-browser.cjs'
+      - 'tests/quest-collect-regression.cjs'
+      - 'tests/quest-collect-browser.cjs'
       - '.github/workflows/terrain-source.yml'
   workflow_dispatch:
 
@@ -81,6 +85,8 @@ jobs:
           node --check tests/objective-hud-browser.cjs
           node --check tests/quest-chains.cjs
           node --check tests/quest-chains-browser.cjs
+          node --check tests/quest-collect-regression.cjs
+          node --check tests/quest-collect-browser.cjs
           node --check tests/gameplay-v020.cjs
           node --check tests/gameplay-v021.cjs
           node --check tests/design-d01.cjs
@@ -125,6 +131,7 @@ jobs:
           node tests/gameplay-v021.cjs
           node tests/quest-v022.cjs
           node tests/quest-chains.cjs
+          node tests/quest-collect-regression.cjs
           node tests/interaction-v0221.cjs
           node tests/terrain-sculpt.cjs
           node tests/terrain-paint.cjs
@@ -184,6 +191,7 @@ jobs:
           node tests/material-bank-browser.cjs
           node tests/objective-hud-browser.cjs
           node tests/quest-chains-browser.cjs
+          node tests/quest-collect-browser.cjs
           node tests/design-d01.cjs
           node tests/terrain-sculpt-browser.cjs
       - name: Upload Terrain Sculpt visual evidence

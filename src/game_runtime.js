@@ -167,7 +167,10 @@ function interactWith(q){
  if(a!=='none'&&actionMode(d)==='interact')action(q,'interact');
  runScripts('interact',{id:d.id,name:d.name,action:a,value:d.value||0});
  if(gameplay)gameplay.interact(d.id,performance.now());
- if(quests)quests.record('interact',d.id,1);
+ // Picking up an object is a collect quest event, not an interact quest event.
+  // Gameplay graph 'interact' events remain backward compatible.
+  var isPickup=a==='collect'||(d.components||[]).some(function(c){return c.type==='pickup'&&c.enabled!==false&&componentMode(c)==='interact';});
+  if(quests&&!isPickup)quests.record('interact',d.id,1);
  drawHud();return true;
 }
 function updateInteractionHint(){

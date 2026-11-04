@@ -118,6 +118,9 @@
     if(next>time)return;
     if(repeated&&!['damage','heal'].includes(c.type))return;
     if(c.type==='pickup'){
+     // Legacy action=collect owns this pickup. Do not grant or emit twice when
+     // the same object also has a Pickup component (common in older scenes).
+     if(def.action==='collect')return;
      if(state.picked[id])return;state.picked[id]=true;call('setVisible',id,false);call('addCoins',num(c.amount,1,0,100000));call('message',str(c.message,'Предмет получен'));emit('collect',id,{value:c.amount||1});
     }else if(c.type==='damage'){health(-num(c.amount,20,1,1000));
     }else if(c.type==='heal'){health(num(c.amount,25,1,1000));
